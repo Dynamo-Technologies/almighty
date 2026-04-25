@@ -1,0 +1,30 @@
+[project]
+name = "almighty-kernel"
+version = "0.1.0"
+description = "Almighty kernel — tenant/scenario-namespaced wrapper around PyRapide"
+requires-python = ">=3.11"
+authors = [
+    { name = "Shane Morris", email = "shane@beautifulmajesticdolphin.com" },
+]
+dependencies = [
+    "pyrapide>=0.3.0",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["almighty_kernel*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
