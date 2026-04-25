@@ -1,0 +1,32 @@
+{
+  "name": "@almighty/control-plane",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Almighty multi-tenant control plane (WS-301 substrate, WS-302 turn controller)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node --experimental-strip-types src/server.ts",
+    "dev": "node --experimental-strip-types --watch src/server.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate": "node --experimental-strip-types src/db/migrate.ts",
+    "lint:types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "jose": "^5.9.0",
+    "pg": "^8.13.0",
+    "pino": "^9.5.0",
+    "uuid": "^11.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
