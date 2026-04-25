@@ -38,12 +38,12 @@ export function requireCellRole(...allowed: CellRole[]) {
   };
 }
 
-export function requireOwnTenant(
+export async function requireOwnTenant(
   req: FastifyRequest<{ Params: { id: string } }>,
   reply: FastifyReply,
-): void {
+): Promise<void> {
   if (req.params.id !== req.claims.tenant_id) {
-    reply.code(403).send({
+    return reply.code(403).send({
       error: "forbidden",
       reason: "cross-tenant access denied: URL tenant id must match JWT tenant_id",
     });
