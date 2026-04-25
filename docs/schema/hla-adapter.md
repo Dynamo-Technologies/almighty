@@ -367,25 +367,25 @@ attributes will see stale or default values.
    Both adapters consume the same JSON. Authoring is a single follow-up
    issue, not two.
 2. **Dead-reckoning algorithm per category** — shared with DIS
-   ([`dis-adapter.md` Open Question #3](dis-adapter.md#33-open-questions)).
+   ([`dis-adapter.md` Open Question #3](dis-adapter.md#6-open-questions)).
    RPR-FOM uses the same `DeadReckoningAlgorithm` enumeration as DIS.
 3. **Time policy choice** — `timestep-regulating + timestep-constrained`
    is the v1 default (see [§ 3.2](#32-time)). If a partner federate uses
    `receive-order` only, the federation degrades to wall-clock. Decide
    whether to enforce the time policy on join or accept degradation.
 4. **`lose_track` representation** — shared with DIS
-   ([`dis-adapter.md` Open Question #4](dis-adapter.md#33-open-questions)).
+   ([`dis-adapter.md` Open Question #4](dis-adapter.md#6-open-questions)).
    The HLA mitigation (custom FOM-module interaction) is cleaner than the
    DIS mitigation (custom Signal PDU header). If a custom interaction is
    added, both adapters benefit; track jointly.
 5. **WHITE force affiliation** — same as
-   [`dis-adapter.md` Open Question #5](dis-adapter.md#33-open-questions).
+   [`dis-adapter.md` Open Question #5](dis-adapter.md#6-open-questions).
 6. **Subclass-attribute publication policy** — v1 publishes only inherited
    `BaseEntity` / `PhysicalEntity` attributes. Decide before any joint
    federation with a partner that subscribes to subclass attributes
    (e.g., an Aircraft federate that wants `AfterburnerOn`).
 7. **Object instance ↔ UUID persistence** — shared with DIS
-   ([`dis-adapter.md` Open Question #7](dis-adapter.md#33-open-questions)).
+   ([`dis-adapter.md` Open Question #7](dis-adapter.md#6-open-questions)).
    The HLA `ObjectInstanceHandle` is RTI-allocated and only valid inside
    one federation execution; the durable mapping is `UUID ↔
    ObjectInstanceName`, where the name is adapter-controlled. v1 makes
