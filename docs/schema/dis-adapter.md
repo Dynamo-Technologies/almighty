@@ -63,7 +63,7 @@ translates as follows:
 | DIS field | Neutral source | Translation rule |
 |---|---|---|
 | `ExerciseID` (1 byte, `1..255`) | `scenario_id` | Adapter maintains a `(tenant_id, scenario_id) → ExerciseID` lookup table allocated at scenario start. ExerciseID `0` is reserved (DIS convention). 255 active scenarios per adapter instance is the v1 ceiling — flagged as an open question if scenarios-per-tenant exceeds this. |
-| `Site` (16-bit) | `tenant_id` (low 16 bits of a deterministic hash) | Adapter assigns `Site` from a hash of `tenant_id` modulo `2^16 - 1`. Site `0` is reserved. Collisions (>65k tenants) are deferred. |
+| `Site` (16-bit) | `tenant_id` (low 16 bits of a deterministic hash) | Adapter assigns `Site = (hash(tenant_id) mod 65535) + 1`, producing values `1..65535`. Site `0` is reserved (DIS convention) and never assigned. Collisions (>65k tenants) are deferred. |
 | `Application` (16-bit) | adapter-instance ordinal | Each adapter process within a tenant gets a unique Application id. Single-process v1: hardcoded to 1. |
 | `EntityNumber` (16-bit) | `entity_id` (sequence per scenario) | Adapter maintains an `entity_id → EntityNumber` table per `(Site, Application, ExerciseID)`. `EntityNumber = 0` is reserved (DIS) and never assigned. |
 
@@ -314,10 +314,10 @@ is academic, but flagged for completeness.
 
 ### 5.6 Tenant / scenario address collisions
 
-`Site = hash(tenant_id) mod 65535` collides at >65k tenants per adapter
-process. `ExerciseID` is 1 byte and can address 254 scenarios per tenant.
-Both ceilings are far above v1 demo scope but become real problems at
-production scale.
+`Site = (hash(tenant_id) mod 65535) + 1` collides at >65k tenants per adapter
+process. `ExerciseID` is 1 byte and can address 255 scenarios per tenant
+(values `1..255`; `0` is reserved per DIS convention). Both ceilings are
+far above v1 demo scope but become real problems at production scale.
 
 ---
 
