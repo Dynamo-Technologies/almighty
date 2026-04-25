@@ -1,0 +1,158 @@
+[
+  {
+    "id": "document",
+    "name": "Almighty effect catalog (Nashville)",
+    "version": "1.0",
+    "description": "WS-203 — visual regression catalog of the nine WS-201 effect templates, hand-authored as static CZML. Effects laid out in a 3x3 grid centered on Nashville (~3 km cell spacing) and staggered in time across one hour so the timeline scrubber lands on each one individually. UNCLASSIFIED — FOR DEMONSTRATION PURPOSES ONLY (banner is the renderer's responsibility, WS-501).",
+    "clock": {
+      "interval": "2026-04-25T00:00:00Z/2026-04-25T01:00:00Z",
+      "currentTime": "2026-04-25T00:00:00Z",
+      "multiplier": 60,
+      "range": "LOOP_STOP",
+      "step": "SYSTEM_CLOCK_MULTIPLIER"
+    }
+  },
+  {
+    "id": "ew-cone-demo",
+    "name": "EW cone — demo",
+    "description": "Electronic-warfare emission cone. Apex at NW grid cell, azimuth 045°, beamwidth 30°, range 3 km.",
+    "availability": "2026-04-25T00:00:00Z/2026-04-25T01:00:00Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [-86.814, 36.207, 200, -86.79726, 36.23041, 200, -86.79576, 36.22967, 200, -86.79432, 36.22887, 200, -86.79293, 36.228, 200, -86.79159, 36.22708, 200, -86.79032, 36.22611, 200, -86.78912, 36.22508, 200, -86.78798, 36.22401, 200, -86.78691, 36.22289, 200, -86.78592, 36.22172, 200, -86.785, 36.22051, 200, -86.814, 36.207, 200]
+      },
+      "material": { "solidColor": { "color": { "rgba": [200, 80, 80, 90] } } },
+      "outline": true,
+      "outlineColor": { "rgba": [200, 80, 80, 220] },
+      "perPositionHeight": false,
+      "height": 200
+    }
+  },
+  {
+    "id": "uas-corridor-demo",
+    "name": "UAS corridor — demo",
+    "description": "UAS flight corridor running NE at the N grid cell, 200 m wide, altitude band 300–800 m.",
+    "availability": "2026-04-25T00:06:40Z/2026-04-25T01:00:00Z",
+    "corridor": {
+      "positions": {
+        "cartographicDegrees": [-86.798, 36.199, 500, -86.78, 36.207, 500, -86.762, 36.215, 500]
+      },
+      "width": 200,
+      "height": 300,
+      "extrudedHeight": 800,
+      "cornerType": "ROUNDED",
+      "material": { "solidColor": { "color": { "rgba": [120, 200, 255, 80] } } },
+      "outline": true,
+      "outlineColor": { "rgba": [120, 200, 255, 220] }
+    }
+  },
+  {
+    "id": "radar-fan-demo",
+    "name": "Radar fan — demo",
+    "description": "Radar coverage fan at NE grid cell, azimuth 270° (west), 90° sweep, 3.5 km range.",
+    "availability": "2026-04-25T00:13:20Z/2026-04-25T01:00:00Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [-86.746, 36.207, 200, -86.77362, 36.1847, 200, -86.7776, 36.18847, 200, -86.78081, 36.19268, 200, -86.78315, 36.19726, 200, -86.78458, 36.20207, 200, -86.78506, 36.207, 200, -86.78458, 36.21193, 200, -86.78315, 36.21674, 200, -86.78081, 36.22132, 200, -86.7776, 36.22553, 200, -86.77362, 36.2293, 200, -86.746, 36.207, 200]
+      },
+      "material": { "solidColor": { "color": { "rgba": [80, 200, 120, 70] } } },
+      "outline": true,
+      "outlineColor": { "rgba": [80, 200, 120, 220] },
+      "perPositionHeight": false,
+      "height": 200
+    }
+  },
+  {
+    "id": "jamming-circle-demo",
+    "name": "Jamming circle — demo",
+    "description": "Omnidirectional jamming coverage at W grid cell, radius 1.5 km, VHF band.",
+    "availability": "2026-04-25T00:20:00Z/2026-04-25T01:00:00Z",
+    "position": { "cartographicDegrees": [-86.814, 36.18, 0] },
+    "ellipse": {
+      "semiMajorAxis": 1500,
+      "semiMinorAxis": 1500,
+      "material": { "solidColor": { "color": { "rgba": [255, 80, 60, 90] } } },
+      "outline": true,
+      "outlineColor": { "rgba": [255, 80, 60, 220] },
+      "heightReference": "CLAMP_TO_GROUND"
+    }
+  },
+  {
+    "id": "satellite-swath-demo",
+    "name": "Satellite swath — demo",
+    "description": "Satellite ground swath crossing the center cell, 8 km wide along a NW→SE pass.",
+    "availability": "2026-04-25T00:26:40Z/2026-04-25T01:00:00Z",
+    "corridor": {
+      "positions": {
+        "cartographicDegrees": [-86.86, 36.15, 0, -86.78, 36.18, 0, -86.7, 36.21, 0]
+      },
+      "width": 8000,
+      "cornerType": "MITERED",
+      "material": { "solidColor": { "color": { "rgba": [180, 200, 80, 60] } } },
+      "outline": true,
+      "outlineColor": { "rgba": [180, 200, 80, 200] },
+      "heightReference": "CLAMP_TO_GROUND"
+    }
+  },
+  {
+    "id": "indirect-fire-arc-demo",
+    "name": "Indirect fire arc — demo",
+    "description": "Ballistic indirect-fire trajectory at E grid cell, range ~3 km, parabolic apex 1.5 km.",
+    "availability": "2026-04-25T00:33:20Z/2026-04-25T01:00:00Z",
+    "polyline": {
+      "positions": {
+        "cartographicDegrees": [-86.76, 36.169, 200.0, -86.75767, 36.17083, 658.3, -86.75533, 36.17267, 1033.3, -86.753, 36.1745, 1325.0, -86.75067, 36.17633, 1533.3, -86.74833, 36.17817, 1658.3, -86.746, 36.18, 1700.0, -86.74367, 36.18183, 1658.3, -86.74133, 36.18367, 1533.3, -86.739, 36.1855, 1325.0, -86.73667, 36.18733, 1033.3, -86.73433, 36.18917, 658.3, -86.732, 36.191, 200.0]
+      },
+      "width": 4,
+      "material": { "solidColor": { "color": { "rgba": [255, 200, 80, 230] } } },
+      "clampToGround": false,
+      "arcType": "NONE"
+    }
+  },
+  {
+    "id": "ir-plume-demo",
+    "name": "IR plume — demo",
+    "description": "Vertical IR plume at SW grid cell, 300 m tall, peak intensity 800 W/sr.",
+    "availability": "2026-04-25T00:40:00Z/2026-04-25T01:00:00Z",
+    "position": { "cartographicDegrees": [-86.814, 36.153, 200] },
+    "cylinder": {
+      "length": 300,
+      "topRadius": 60,
+      "bottomRadius": 25,
+      "material": { "solidColor": { "color": { "rgba": [255, 100, 40, 160] } } },
+      "outline": true,
+      "outlineColor": { "rgba": [255, 60, 20, 220] },
+      "heightReference": "RELATIVE_TO_GROUND"
+    }
+  },
+  {
+    "id": "masint-cell-demo",
+    "name": "MASINT cell — demo",
+    "description": "MASINT collection cell at S grid cell, ~1.6 × 1.5 km rectangular polygon.",
+    "availability": "2026-04-25T00:46:40Z/2026-04-25T01:00:00Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [-86.788, 36.146, 0, -86.772, 36.146, 0, -86.772, 36.16, 0, -86.788, 36.16, 0, -86.788, 36.146, 0]
+      },
+      "material": { "solidColor": { "color": { "rgba": [180, 80, 200, 70] } } },
+      "outline": true,
+      "outlineColor": { "rgba": [180, 80, 200, 220] },
+      "heightReference": "CLAMP_TO_GROUND"
+    }
+  },
+  {
+    "id": "keyhole-footprint-demo",
+    "name": "Keyhole footprint — demo",
+    "description": "KH-class imaging footprint at SE grid cell, ~1.2 × 1.1 km rectangular polygon.",
+    "availability": "2026-04-25T00:53:20Z/2026-04-25T01:00:00Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [-86.752, 36.148, 0, -86.74, 36.148, 0, -86.74, 36.158, 0, -86.752, 36.158, 0, -86.752, 36.148, 0]
+      },
+      "material": { "solidColor": { "color": { "rgba": [80, 180, 220, 80] } } },
+      "outline": true,
+      "outlineColor": { "rgba": [80, 180, 220, 220] },
+      "heightReference": "CLAMP_TO_GROUND"
+    }
+  }
+]
