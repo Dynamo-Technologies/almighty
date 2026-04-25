@@ -1,0 +1,125 @@
+{
+  "profile_id": "00000000-bbbb-0001-0000-000000000001",
+  "version": 1,
+  "display_name": "Notional US BCT — battalion",
+  "force_affiliation": "BLUE",
+  "officer_types_available": [
+    "SENSOR",
+    "EFFECTOR",
+    "MOVER",
+    "COMMUNICATOR",
+    "COMMANDER"
+  ],
+  "action_verbs_available": [
+    "detect",
+    "track",
+    "classify",
+    "lose_track",
+    "engage",
+    "suppress",
+    "destroy",
+    "move_to",
+    "follow_route",
+    "halt",
+    "assume_posture",
+    "send",
+    "relay",
+    "report",
+    "issue_order",
+    "request_support",
+    "delegate",
+    "escalate"
+  ],
+  "sensor": {
+    "modalities": {
+      "EO_IR":        { "max_range_m": 8000,  "min_classify_dwell_s": 3.0 },
+      "RADAR":        { "max_range_m": 50000, "min_classify_dwell_s": 1.0 },
+      "RF":           { "max_range_m": 60000, "min_classify_dwell_s": 2.0 },
+      "MASINT_MULTI": { "max_range_m": 25000, "min_classify_dwell_s": 6.0 }
+    },
+    "max_concurrent_tracks": 32,
+    "max_update_rate_hz": 5.0,
+    "default_track_lifetime_s": 180
+  },
+  "effector": {
+    "weapon_systems": [
+      {
+        "id": "notional.indirect.medium",
+        "delivery_mode": "INDIRECT",
+        "effective_range_m": 25000,
+        "ammo_remaining": 240,
+        "time_of_flight_s": 32,
+        "supported_verbs": ["engage", "suppress", "destroy"]
+      },
+      {
+        "id": "notional.direct.smallarms",
+        "delivery_mode": "DIRECT",
+        "effective_range_m": 600,
+        "ammo_remaining": 12000,
+        "time_of_flight_s": 0,
+        "supported_verbs": ["engage", "suppress"]
+      }
+    ],
+    "max_suppression_area_m2": 1500000,
+    "cyber_disable": false
+  },
+  "mover": {
+    "cruise_speed_mps": 12.5,
+    "max_speed_mps": 22.2,
+    "allowed_postures": ["HALTED", "MOUNTED", "DISMOUNTED", "DUG_IN", "ALERT", "REST"],
+    "posture_transitions": {
+      "HALTED":     ["MOUNTED", "REST", "ALERT"],
+      "MOUNTED":    ["HALTED", "ALERT"],
+      "DISMOUNTED": ["HALTED", "DUG_IN", "ALERT"],
+      "DUG_IN":     ["DISMOUNTED", "ALERT"],
+      "ALERT":      ["HALTED", "MOUNTED", "DISMOUNTED", "REST"],
+      "REST":       ["ALERT", "HALTED"]
+    }
+  },
+  "communicator": {
+    "channels": ["VHF", "UHF", "HF", "SATCOM", "DATA"],
+    "bands": {
+      "VHF": { "max_power_w": 100, "max_coverage_area_m2": 4000000 },
+      "UHF": { "max_power_w": 100, "max_coverage_area_m2": 3000000 }
+    },
+    "advertise_corridor": false,
+    "reports_allowed": ["SITREP", "SPOTREP", "LOGSTAT", "INTREP", "CASEVAC"]
+  },
+  "commander": {
+    "echelon": "BATTALION",
+    "subordinates_under": ["notional.ground.bct.company"],
+    "delegatable_verbs": ["move_to", "follow_route", "engage", "suppress"],
+    "request_support_types": ["FIRES", "ISR", "MEDEVAC", "LOGISTICS", "AIR"],
+    "max_delegation_ttl_turns": 6
+  },
+  "effect_parameter_ranges": {
+    "indirect_fire_arc": {
+      "range_m":               { "min": 1000, "max": 25000 },
+      "dispersion_ellipse_a_m": { "min": 5,    "max": 200 },
+      "dispersion_ellipse_b_m": { "min": 5,    "max": 200 },
+      "time_of_flight_s":      { "min": 1,    "max": 60 }
+    },
+    "radar_fan": {
+      "sweep_arc_deg": { "min": 10,  "max": 360 },
+      "range_m":       { "min": 500, "max": 50000 }
+    },
+    "ir_plume": {
+      "peak_intensity_w_per_sr": { "min": 1, "max": 4000 },
+      "decay_s":                { "min": 5, "max": 240 }
+    },
+    "masint_cell": {
+      "polygon_area_m2": { "min": 1000, "max": 4000000 },
+      "dwell_s":         { "min": 30,   "max": 3600 }
+    },
+    "keyhole_footprint": {
+      "polygon_area_m2": { "min": 100, "max": 100000 }
+    }
+  },
+  "entity_bindings": {
+    "type_subtype_refs": [
+      "notional.ground.bct.battalion",
+      "notional.ground.bct.hq.command-vehicle",
+      "notional.ground.bct.company"
+    ]
+  }
+}

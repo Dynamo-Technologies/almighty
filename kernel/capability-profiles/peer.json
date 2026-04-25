@@ -1,0 +1,138 @@
+{
+  "profile_id": "00000000-aaaa-0001-0000-000000000001",
+  "version": 1,
+  "display_name": "Notional peer adversary - battalion",
+  "force_affiliation": "RED",
+  "officer_types_available": [
+    "SENSOR",
+    "EFFECTOR",
+    "MOVER",
+    "COMMUNICATOR",
+    "COMMANDER"
+  ],
+  "action_verbs_available": [
+    "detect",
+    "track",
+    "classify",
+    "lose_track",
+    "engage",
+    "suppress",
+    "destroy",
+    "disable",
+    "move_to",
+    "follow_route",
+    "halt",
+    "assume_posture",
+    "send",
+    "relay",
+    "jam",
+    "report",
+    "issue_order",
+    "request_support",
+    "delegate",
+    "escalate"
+  ],
+  "sensor": {
+    "modalities": {
+      "EO_IR": { "max_range_m": 6000,  "min_classify_dwell_s": 4.0 },
+      "RADAR": { "max_range_m": 60000, "min_classify_dwell_s": 1.5 },
+      "RF":    { "max_range_m": 90000, "min_classify_dwell_s": 2.0 }
+    },
+    "max_concurrent_tracks": 24,
+    "max_update_rate_hz": 4.0,
+    "default_track_lifetime_s": 150
+  },
+  "effector": {
+    "weapon_systems": [
+      {
+        "id": "notional.indirect.medium",
+        "delivery_mode": "INDIRECT",
+        "effective_range_m": 30000,
+        "ammo_remaining": 360,
+        "time_of_flight_s": 35,
+        "supported_verbs": ["engage", "suppress", "destroy"]
+      },
+      {
+        "id": "notional.ew.tactical",
+        "delivery_mode": "EW",
+        "effective_range_m": 50000,
+        "ammo_remaining": 99999,
+        "time_of_flight_s": 0,
+        "supported_verbs": ["disable"]
+      }
+    ],
+    "max_suppression_area_m2": 2500000,
+    "cyber_disable": false
+  },
+  "mover": {
+    "cruise_speed_mps": 13.9,
+    "max_speed_mps": 25.0,
+    "allowed_postures": ["HALTED", "MOUNTED", "DISMOUNTED", "DUG_IN", "ALERT"],
+    "posture_transitions": {
+      "HALTED":     ["MOUNTED", "ALERT"],
+      "MOUNTED":    ["HALTED", "ALERT"],
+      "DISMOUNTED": ["HALTED", "DUG_IN", "ALERT"],
+      "DUG_IN":     ["DISMOUNTED", "ALERT"],
+      "ALERT":      ["HALTED", "MOUNTED", "DISMOUNTED"]
+    }
+  },
+  "communicator": {
+    "channels": ["VHF", "UHF", "HF", "DATA"],
+    "bands": {
+      "VHF": { "max_power_w": 250,  "max_coverage_area_m2": 8000000 },
+      "UHF": { "max_power_w": 250,  "max_coverage_area_m2": 6000000 },
+      "L":   { "max_power_w": 1500, "max_coverage_area_m2": 4000000 }
+    },
+    "advertise_corridor": true,
+    "reports_allowed": ["SITREP", "SPOTREP", "INTREP"]
+  },
+  "commander": {
+    "echelon": "BATTALION",
+    "subordinates_under": ["notional.peer.company"],
+    "delegatable_verbs": ["move_to", "follow_route", "engage", "suppress", "jam"],
+    "request_support_types": ["FIRES", "ISR", "EW", "AIR"],
+    "max_delegation_ttl_turns": 4
+  },
+  "effect_parameter_ranges": {
+    "indirect_fire_arc": {
+      "range_m":               { "min": 1000, "max": 30000 },
+      "dispersion_ellipse_a_m": { "min": 8,    "max": 300 },
+      "dispersion_ellipse_b_m": { "min": 8,    "max": 300 },
+      "time_of_flight_s":      { "min": 1,    "max": 90 }
+    },
+    "radar_fan": {
+      "sweep_arc_deg": { "min": 5,   "max": 360 },
+      "range_m":       { "min": 500, "max": 60000 }
+    },
+    "jamming_circle": {
+      "radius_m": { "min": 200, "max": 8000 },
+      "power_w":  { "min": 50,  "max": 1500 }
+    },
+    "ew_cone": {
+      "azimuth_deg":       { "min": 0,    "max": 359 },
+      "beamwidth_deg":     { "min": 5,    "max": 60 },
+      "effective_range_m": { "min": 1000, "max": 50000 }
+    },
+    "ir_plume": {
+      "peak_intensity_w_per_sr": { "min": 1, "max": 5000 },
+      "decay_s":                { "min": 5, "max": 300 }
+    },
+    "uas_corridor": {
+      "altitude_band_lower_m": { "min": 100, "max": 6000 },
+      "altitude_band_upper_m": { "min": 100, "max": 8000 }
+    }
+  },
+  "uncertainty": {
+    "effector.weapon_systems[notional.indirect.medium].effective_range_m": { "band_pct": 0.20 },
+    "effector.weapon_systems[notional.ew.tactical].effective_range_m":     { "band_pct": 0.30 },
+    "sensor.modalities.RADAR.max_range_m":                                  { "band_pct": 0.25 },
+    "communicator.bands.L.max_power_w":                                     { "band_lower": 500, "band_upper": 2000 }
+  },
+  "entity_bindings": {
+    "type_subtype_refs": [
+      "notional.peer.battalion",
+      "notional.peer.hq.command-vehicle",
+      "notional.peer.company"
+    ]
+  }
+}

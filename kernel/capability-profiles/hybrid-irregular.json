@@ -1,0 +1,113 @@
+{
+  "profile_id": "00000000-dddd-0001-0000-000000000001",
+  "version": 1,
+  "display_name": "Notional hybrid / irregular force - cell",
+  "force_affiliation": "RED",
+  "officer_types_available": [
+    "SENSOR",
+    "EFFECTOR",
+    "MOVER",
+    "COMMUNICATOR"
+  ],
+  "action_verbs_available": [
+    "detect",
+    "classify",
+    "lose_track",
+    "engage",
+    "disable",
+    "move_to",
+    "halt",
+    "assume_posture",
+    "send",
+    "jam",
+    "report"
+  ],
+  "sensor": {
+    "modalities": {
+      "EO_IR":  { "max_range_m": 3000, "min_classify_dwell_s": 6.0 },
+      "ACOUSTIC": { "max_range_m": 2500, "min_classify_dwell_s": 8.0 }
+    },
+    "max_concurrent_tracks": 4,
+    "max_update_rate_hz": 1.0,
+    "default_track_lifetime_s": 60
+  },
+  "effector": {
+    "weapon_systems": [
+      {
+        "id": "notional.direct.smallarms",
+        "delivery_mode": "DIRECT",
+        "effective_range_m": 400,
+        "ammo_remaining": 4000,
+        "time_of_flight_s": 0,
+        "supported_verbs": ["engage"]
+      },
+      {
+        "id": "notional.indirect.improvised",
+        "delivery_mode": "INDIRECT",
+        "effective_range_m": 4000,
+        "ammo_remaining": 60,
+        "time_of_flight_s": 18,
+        "supported_verbs": ["engage"]
+      },
+      {
+        "id": "notional.ew.improvised",
+        "delivery_mode": "EW",
+        "effective_range_m": 8000,
+        "ammo_remaining": 99999,
+        "time_of_flight_s": 0,
+        "supported_verbs": ["disable"]
+      }
+    ],
+    "max_suppression_area_m2": 250000,
+    "cyber_disable": false
+  },
+  "mover": {
+    "cruise_speed_mps": 4.0,
+    "max_speed_mps": 14.0,
+    "allowed_postures": ["HALTED", "DISMOUNTED", "DUG_IN", "ALERT"],
+    "posture_transitions": {
+      "HALTED":     ["DISMOUNTED", "ALERT"],
+      "DISMOUNTED": ["HALTED", "DUG_IN", "ALERT"],
+      "DUG_IN":     ["DISMOUNTED"],
+      "ALERT":      ["HALTED", "DISMOUNTED"]
+    }
+  },
+  "communicator": {
+    "channels": ["VHF", "DATA"],
+    "bands": {
+      "VHF": { "max_power_w": 50, "max_coverage_area_m2": 2500000 },
+      "UHF": { "max_power_w": 50, "max_coverage_area_m2": 2000000 }
+    },
+    "advertise_corridor": false,
+    "reports_allowed": ["SITREP"]
+  },
+  "effect_parameter_ranges": {
+    "indirect_fire_arc": {
+      "range_m":               { "min": 200, "max": 4000 },
+      "dispersion_ellipse_a_m": { "min": 30,  "max": 600 },
+      "dispersion_ellipse_b_m": { "min": 30,  "max": 600 },
+      "time_of_flight_s":      { "min": 1,   "max": 30 }
+    },
+    "jamming_circle": {
+      "radius_m": { "min": 100, "max": 3000 },
+      "power_w":  { "min": 5,   "max": 300 }
+    },
+    "ir_plume": {
+      "peak_intensity_w_per_sr": { "min": 1, "max": 1500 },
+      "decay_s":                { "min": 2, "max": 120 }
+    }
+  },
+  "uncertainty": {
+    "effector.weapon_systems[notional.indirect.improvised].effective_range_m": { "band_pct": 0.50 },
+    "effector.weapon_systems[notional.ew.improvised].effective_range_m":       { "band_pct": 0.60 },
+    "effector.weapon_systems[notional.indirect.improvised].ammo_remaining":    { "band_lower": 20, "band_upper": 200 },
+    "sensor.modalities.EO_IR.max_range_m":                                      { "band_pct": 0.40 },
+    "communicator.bands.VHF.max_power_w":                                       { "band_lower": 10, "band_upper": 200 }
+  },
+  "entity_bindings": {
+    "type_subtype_refs": [
+      "notional.hybrid.cell",
+      "notional.hybrid.improvised-team"
+    ]
+  }
+}
