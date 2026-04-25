@@ -1,0 +1,255 @@
+[
+  {
+    "id": "document",
+    "name": "Almighty - Nashville Cumberland River vignette",
+    "version": "1.0",
+    "description": "<p>Scripted ~10-minute slice exercising all nine effect families over the Cumberland River north of downtown Nashville. WS-204 (#16). Anchor: 36.18 N, 86.78 W. UNCLASSIFIED - FOR DEMONSTRATION PURPOSES ONLY.</p>",
+    "clock": {
+      "interval": "2026-04-25T00:00:00Z/2026-04-25T00:10:00Z",
+      "currentTime": "2026-04-25T00:00:00Z",
+      "multiplier": 30,
+      "range": "LOOP_STOP",
+      "step": "SYSTEM_CLOCK_MULTIPLIER"
+    }
+  },
+
+  {
+    "id": "uas-corridor.red.t00",
+    "name": "RED UAS corridor",
+    "description": "Red ISR overflight corridor running west to east across the Cumberland River at 36.18 N. Effect family: uas_corridor. Altitude band 1500 m to 3000 m.",
+    "availability": "2026-04-25T00:00:00Z/2026-04-25T00:09:00Z",
+    "corridor": {
+      "positions": {
+        "cartographicDegrees": [
+          -86.820, 36.180, 0,
+          -86.740, 36.180, 0
+        ]
+      },
+      "width": 4000,
+      "height": 1500,
+      "extrudedHeight": 3000,
+      "cornerType": "ROUNDED",
+      "material": {
+        "solidColor": { "color": { "rgba": [220, 80, 80, 110] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [220, 80, 80, 220] }
+    }
+  },
+
+  {
+    "id": "ew-cone.red.t01",
+    "name": "RED EW cone",
+    "description": "Red electronic warfare cone, west bank origin, azimuth 270 (pointing due west), beamwidth 30 degrees, effective range 8 km. Effect family: ew_cone.",
+    "availability": "2026-04-25T00:01:00Z/2026-04-25T00:09:00Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [
+          -86.785, 36.180, 0,
+          -86.871, 36.161, 0,
+          -86.874, 36.180, 0,
+          -86.871, 36.199, 0
+        ]
+      },
+      "material": {
+        "solidColor": { "color": { "rgba": [200, 60, 60, 100] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [200, 60, 60, 220] },
+      "fill": true,
+      "extrudedHeight": 200,
+      "height": 0
+    }
+  },
+
+  {
+    "id": "radar-fan.blue.t02",
+    "name": "BLUE radar fan",
+    "description": "Blue ground radar fan, east bank origin, sweep arc 90 degrees centered on bearing 270 (sweeping west), range 10 km. Effect family: radar_fan.",
+    "availability": "2026-04-25T00:02:00Z/2026-04-25T00:09:00Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [
+          -86.775, 36.180, 0,
+          -86.854, 36.116, 0,
+          -86.870, 36.150, 0,
+          -86.886, 36.180, 0,
+          -86.870, 36.210, 0,
+          -86.854, 36.244, 0
+        ]
+      },
+      "material": {
+        "solidColor": { "color": { "rgba": [80, 130, 255, 90] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [80, 130, 255, 220] },
+      "fill": true,
+      "extrudedHeight": 150,
+      "height": 0
+    }
+  },
+
+  {
+    "id": "indirect-fire-arc.blue.t03",
+    "name": "BLUE indirect fire arc",
+    "description": "Blue indirect fire trajectory from east-bank firing position to river-crossing impact at 36.180 N, -86.780 W. Apex ~3000 m, time of flight ~30 s. Effect family: indirect_fire_arc.",
+    "availability": "2026-04-25T00:03:00Z/2026-04-25T00:04:00Z",
+    "polyline": {
+      "positions": {
+        "cartographicDegrees": [
+          -86.770, 36.150, 200,
+          -86.773, 36.158, 1500,
+          -86.776, 36.166, 2700,
+          -86.778, 36.173, 2400,
+          -86.780, 36.180, 200
+        ]
+      },
+      "material": {
+        "solidColor": { "color": { "rgba": [80, 130, 255, 240] } }
+      },
+      "width": 4,
+      "clampToGround": false,
+      "arcType": "NONE"
+    }
+  },
+
+  {
+    "id": "indirect-fire-arc.blue.t03.dispersion",
+    "name": "BLUE indirect fire dispersion ellipse",
+    "description": "Dispersion ellipse at impact (semi-major 80 m, semi-minor 50 m). Bound to the parent indirect_fire_arc artifact.",
+    "availability": "2026-04-25T00:03:00Z/2026-04-25T00:04:00Z",
+    "position": {
+      "cartographicDegrees": [-86.780, 36.180, 1]
+    },
+    "ellipse": {
+      "semiMajorAxis": 80,
+      "semiMinorAxis": 50,
+      "rotation": 0.0,
+      "material": {
+        "solidColor": { "color": { "rgba": [80, 130, 255, 130] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [80, 130, 255, 240] }
+    }
+  },
+
+  {
+    "id": "masint-cell.t04",
+    "name": "MASINT cell",
+    "description": "MASINT measurement cell registered at impact. Polygon footprint ~200 m square. Effect family: masint_cell.",
+    "availability": "2026-04-25T00:04:00Z/2026-04-25T00:09:00Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [
+          -86.7822, 36.1818, 0,
+          -86.7778, 36.1818, 0,
+          -86.7778, 36.1782, 0,
+          -86.7822, 36.1782, 0
+        ]
+      },
+      "material": {
+        "solidColor": { "color": { "rgba": [255, 200, 80, 110] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [255, 200, 80, 240] },
+      "fill": true,
+      "extrudedHeight": 50,
+      "height": 0
+    }
+  },
+
+  {
+    "id": "satellite-swath.t05",
+    "name": "Satellite swath",
+    "description": "Transient overhead satellite ground footprint, ~30 km wide, NE-SW pass over Nashville. Active T+05:00 to T+05:45. Effect family: satellite_swath.",
+    "availability": "2026-04-25T00:05:00Z/2026-04-25T00:05:45Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [
+          -87.10, 36.50, 0,
+          -86.50, 36.50, 0,
+          -86.50, 35.86, 0,
+          -87.10, 35.86, 0
+        ]
+      },
+      "material": {
+        "solidColor": { "color": { "rgba": [255, 200, 80, 70] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [255, 200, 80, 200] },
+      "fill": true,
+      "extrudedHeight": 80000,
+      "height": 60000
+    }
+  },
+
+  {
+    "id": "ir-plume.t06",
+    "name": "IR plume",
+    "description": "Vertical infrared plume from impact, rising to ~1500 m. Decays over ~90 s (artifact lifetime). Effect family: ir_plume.",
+    "availability": "2026-04-25T00:06:00Z/2026-04-25T00:07:30Z",
+    "position": {
+      "cartographicDegrees": [-86.780, 36.180, 750]
+    },
+    "cylinder": {
+      "length": 1500,
+      "topRadius": 80,
+      "bottomRadius": 200,
+      "material": {
+        "solidColor": { "color": { "rgba": [255, 130, 50, 200] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [255, 90, 30, 240] },
+      "numberOfVerticalLines": 16,
+      "slices": 24
+    }
+  },
+
+  {
+    "id": "keyhole-footprint.t07",
+    "name": "Keyhole footprint",
+    "description": "Refined polygonal footprint over impact after sensor fusion. ~500 m diameter pentagon. Effect family: keyhole_footprint.",
+    "availability": "2026-04-25T00:07:00Z/2026-04-25T00:09:00Z",
+    "polygon": {
+      "positions": {
+        "cartographicDegrees": [
+          -86.7800, 36.1845, 0,
+          -86.7757, 36.1825, 0,
+          -86.7770, 36.1770, 0,
+          -86.7830, 36.1770, 0,
+          -86.7843, 36.1825, 0
+        ]
+      },
+      "material": {
+        "solidColor": { "color": { "rgba": [255, 220, 120, 130] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [255, 200, 80, 240] },
+      "fill": true,
+      "extrudedHeight": 30,
+      "height": 0
+    }
+  },
+
+  {
+    "id": "jamming-circle.red.t08",
+    "name": "RED jamming circle",
+    "description": "Red tactical jamming volume covering the river crossing, 5 km radius, centered slightly south of the impact for combined coverage. Effect family: jamming_circle.",
+    "availability": "2026-04-25T00:08:00Z/2026-04-25T00:09:00Z",
+    "position": {
+      "cartographicDegrees": [-86.780, 36.175, 0]
+    },
+    "ellipse": {
+      "semiMajorAxis": 5000,
+      "semiMinorAxis": 5000,
+      "material": {
+        "solidColor": { "color": { "rgba": [220, 80, 80, 90] } }
+      },
+      "outline": true,
+      "outlineColor": { "rgba": [220, 80, 80, 220] },
+      "fill": true,
+      "extrudedHeight": 250,
+      "height": 0
+    }
+  }
+]
