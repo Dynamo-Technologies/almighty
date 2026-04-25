@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Almighty — CZML demo viewer</title>
+    <link
+      rel="stylesheet"
+      href="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Widgets/widgets.css"
+    />
+    <style>
+      html, body, #cesium { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: #eee; font-family: system-ui, sans-serif; }
+      #banner { position: fixed; top: 0; left: 0; right: 0; background: #c0dd97; color: #111; font-size: 10px; line-height: 16px; text-align: center; font-weight: 600; z-index: 10; letter-spacing: 0.04em; }
+      #banner.bottom { top: auto; bottom: 0; }
+      #cesium { padding-top: 16px; padding-bottom: 16px; box-sizing: border-box; }
+      #status { position: fixed; top: 22px; left: 8px; background: rgba(0,0,0,0.75); padding: 8px 12px; font-size: 12px; max-width: 360px; z-index: 10; border-radius: 4px; line-height: 1.4; }
+      .ok  { color: #8eff8e; }
+      .err { color: #ff8e8e; }
+    </style>
+  </head>
+  <body>
+    <div id="banner">UNCLASSIFIED — FOR DEMONSTRATION PURPOSES ONLY</div>
+    <div id="banner" class="bottom">UNCLASSIFIED — FOR DEMONSTRATION PURPOSES ONLY</div>
+    <div id="status">Loading…</div>
+    <div id="cesium"></div>
+
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Cesium.js"></script>
+    <script type="module">
+      // Pick the demo file via ?file=<name.czml> (default: effect-catalog.czml).
+      // Optional: ?token=<cesium-ion-token> for high-res imagery.
+      const params = new URLSearchParams(location.search);
+      const fileName = params.get("file") || "effect-catalog.czml";
+      const token = params.get("token");
+      if (token) Cesium.Ion.defaultAccessToken = token;
+
+      const status = document.getElementById("status");
+      const log = (msg, cls = "") => {
+        status.innerHTML = `<div class="${cls}">${msg}</div>`;
+      };
+
+      const viewer = new Cesium.Viewer("cesium", {
+        timeline: true, animation: true, baseLayerPicker: false, geocoder: false,
+        homeButton: false, sceneModePicker: false, navigationHelpButton: false,
+        fullscreenButton: false,
+      });
+      viewer.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(-86.78, 36.18, 12000),
+        orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 },
+      });
+
+      try {
+        const ds = await Cesium.CzmlDataSource.load(`./${fileName}`);
+        await viewer.dataSources.add(ds);
+        log(`✓ loaded ${fileName} (${ds.entities.values.length} entities)`, "ok");
+      } catch (err) {
+        log(`✗ ${fileName}: ${err.message}`, "err");
+        console.error(err);
+      }
+    </script>
+  </body>
+</html>
