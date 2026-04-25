@@ -1,0 +1,45 @@
+{
+  "template_id": "ew-cone",
+  "version": 1,
+  "description": "Electronic-warfare emission cone projected from a platform-mounted emitter. Rendered as a planar polygon fan at platform altitude.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "EW cone — {{owning_entity_id}}",
+    "description": "EW emission cone, azimuth {{azimuth_deg}}°, beamwidth {{beamwidth_deg}}°, range {{effective_range_m}} m",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "polygon": {
+      "positions": { "cartographicDegrees": "{{cone_polygon_positions}}" },
+      "material": { "solidColor": { "color": { "rgba": "{{fill_rgba}}" } } },
+      "outline": true,
+      "outlineColor": { "rgba": "{{outline_rgba}}" },
+      "perPositionHeight": false,
+      "height": "{{origin_alt_m}}"
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "origin_lon_deg":      { "type": "number",   "units": "deg",        "required": true },
+    "origin_lat_deg":      { "type": "number",   "units": "deg",        "required": true },
+    "origin_alt_m":        { "type": "number",   "units": "m",          "required": true },
+    "azimuth_deg":         { "type": "number",   "units": "deg",        "required": true },
+    "beamwidth_deg":       { "type": "number",   "units": "deg",        "required": true },
+    "effective_range_m":   { "type": "number",   "units": "m",          "required": true },
+    "cone_polygon_positions": {
+      "type": "number_array",
+      "units": "lon_lat_alt_triples",
+      "required": true,
+      "computed_from": ["origin_lon_deg", "origin_lat_deg", "origin_alt_m", "azimuth_deg", "beamwidth_deg", "effective_range_m"],
+      "description": "Flat array of [lon, lat, alt, lon, lat, alt, …] tracing the apex + arc, computed by the kernel from the tactical params."
+    },
+    "fill_rgba":    { "type": "rgba", "default": [200, 80, 80, 90] },
+    "outline_rgba": { "type": "rgba", "default": [200, 80, 80, 220] }
+  },
+  "capability_constraints": {
+    "azimuth_deg":       { "min": 0,    "max": 359,   "units": "deg" },
+    "beamwidth_deg":     { "min": 5,    "max": 60,    "units": "deg" },
+    "effective_range_m": { "min": 1000, "max": 50000, "units": "m" }
+  }
+}

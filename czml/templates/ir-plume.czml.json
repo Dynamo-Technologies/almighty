@@ -1,0 +1,41 @@
+{
+  "template_id": "ir-plume",
+  "version": 1,
+  "description": "Vertical infrared plume above a hot source (vehicle, fire, exhaust). Rendered as a vertical cylinder with intensity-mapped color.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "IR plume — {{owning_entity_id}}",
+    "description": "IR plume, peak {{peak_intensity_w_per_sr}} W/sr, decay {{decay_s}} s",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "position": { "cartographicDegrees": ["{{origin_lon_deg}}", "{{origin_lat_deg}}", "{{origin_alt_m}}"] },
+    "cylinder": {
+      "length": "{{plume_height_m}}",
+      "topRadius": "{{plume_top_radius_m}}",
+      "bottomRadius": "{{plume_base_radius_m}}",
+      "material": { "solidColor": { "color": { "rgba": "{{fill_rgba}}" } } },
+      "outline": true,
+      "outlineColor": { "rgba": "{{outline_rgba}}" },
+      "heightReference": "RELATIVE_TO_GROUND"
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "origin_lon_deg":      { "type": "number",   "units": "deg", "required": true },
+    "origin_lat_deg":      { "type": "number",   "units": "deg", "required": true },
+    "origin_alt_m":        { "type": "number",   "units": "m",   "required": true },
+    "peak_intensity_w_per_sr": { "type": "number", "units": "W/sr", "required": true },
+    "decay_s":                 { "type": "number", "units": "s",    "required": true },
+    "plume_height_m":      { "type": "number", "units": "m", "required": true, "computed_from": ["peak_intensity_w_per_sr"] },
+    "plume_top_radius_m":  { "type": "number", "units": "m", "required": true, "computed_from": ["peak_intensity_w_per_sr"] },
+    "plume_base_radius_m": { "type": "number", "units": "m", "required": true, "computed_from": ["peak_intensity_w_per_sr"] },
+    "fill_rgba":    { "type": "rgba", "default": [255, 100, 40, 140] },
+    "outline_rgba": { "type": "rgba", "default": [255, 60, 20, 220] }
+  },
+  "capability_constraints": {
+    "peak_intensity_w_per_sr": { "min": 1, "max": 5000, "units": "W/sr" },
+    "decay_s":                { "min": 5, "max": 300,  "units": "s" }
+  }
+}

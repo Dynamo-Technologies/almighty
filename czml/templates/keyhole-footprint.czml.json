@@ -1,0 +1,37 @@
+{
+  "template_id": "keyhole-footprint",
+  "version": 1,
+  "description": "Overhead imaging footprint (KH satellite class): polygon over the imaged ground area.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "Keyhole footprint — {{owning_entity_id}}",
+    "description": "Keyhole footprint, area {{polygon_area_m2}} m², confidence {{confidence}}",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "polygon": {
+      "positions": { "cartographicDegrees": "{{footprint_polygon_positions}}" },
+      "material": { "solidColor": { "color": { "rgba": "{{fill_rgba}}" } } },
+      "outline": true,
+      "outlineColor": { "rgba": "{{outline_rgba}}" },
+      "heightReference": "CLAMP_TO_GROUND"
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "footprint_polygon_positions": {
+      "type": "number_array",
+      "units": "lon_lat_alt_triples",
+      "required": true,
+      "description": "Closed polygon vertices for the imaged footprint (kernel-computed)."
+    },
+    "polygon_area_m2": { "type": "number", "units": "m^2",   "required": true },
+    "confidence":      { "type": "number", "units": "ratio", "required": true, "description": "Imaging confidence in [0, 1]; informational, not constrained by capability profile." },
+    "fill_rgba":    { "type": "rgba", "default": [80, 180, 220, 80] },
+    "outline_rgba": { "type": "rgba", "default": [80, 180, 220, 220] }
+  },
+  "capability_constraints": {
+    "polygon_area_m2": { "min": 100, "max": 200000, "units": "m^2" }
+  }
+}

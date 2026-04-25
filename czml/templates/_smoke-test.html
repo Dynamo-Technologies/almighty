@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Almighty — CZML template smoke test</title>
+    <link
+      rel="stylesheet"
+      href="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Widgets/widgets.css"
+    />
+    <style>
+      html, body, #cesium { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: #eee; font-family: system-ui, sans-serif; }
+      #banner { position: fixed; top: 0; left: 0; right: 0; background: #c0dd97; color: #111; font-size: 10px; line-height: 16px; text-align: center; font-weight: 600; z-index: 10; letter-spacing: 0.04em; }
+      #banner.bottom { top: auto; bottom: 0; }
+      #cesium { padding-top: 16px; padding-bottom: 16px; box-sizing: border-box; }
+      #status { position: fixed; top: 22px; left: 8px; background: rgba(0,0,0,0.75); padding: 8px 12px; font-size: 12px; max-width: 360px; z-index: 10; border-radius: 4px; line-height: 1.4; }
+      #status .ok { color: #8eff8e; }
+      #status .err { color: #ff8e8e; }
+    </style>
+  </head>
+  <body>
+    <div id="banner">UNCLASSIFIED — FOR DEMONSTRATION PURPOSES ONLY</div>
+    <div id="banner" class="bottom">UNCLASSIFIED — FOR DEMONSTRATION PURPOSES ONLY</div>
+    <div id="status">Loading templates…</div>
+    <div id="cesium"></div>
+
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Cesium.js"></script>
+    <script type="module">
+      // Optional: set CESIUM_ION_TOKEN via URL query param (?token=...) for high-res imagery.
+      const urlToken = new URLSearchParams(location.search).get("token");
+      if (urlToken) Cesium.Ion.defaultAccessToken = urlToken;
+
+      const NASHVILLE = { lon: -86.78, lat: 36.18, alt: 8000 };
+      const TEMPLATES = [
+        "ew-cone",
+        "uas-corridor",
+        "radar-fan",
+        "jamming-circle",
+        "satellite-swath",
+        "indirect-fire-arc",
+        "ir-plume",
+        "masint-cell",
+        "keyhole-footprint",
+      ];
+
+      // 3x3 grid offsets in degrees from Nashville center (~3 km spacing).
+      const GRID = {
+        "ew-cone":           { dLon: -0.034, dLat: +0.027 },
+        "uas-corridor":      { dLon:  0.000, dLat: +0.027 },
+        "radar-fan":         { dLon: +0.034, dLat: +0.027 },
+        "jamming-circle":    { dLon: -0.034, dLat:  0.000 },
+        "satellite-swath":   { dLon:  0.000, dLat:  0.000 },
+        "indirect-fire-arc": { dLon: +0.034, dLat:  0.000 },
+        "ir-plume":          { dLon: -0.034, dLat: -0.027 },
+        "masint-cell":       { dLon:  0.000, dLat: -0.027 },
+        "keyhole-footprint": { dLon: +0.034, dLat: -0.027 },
+      };
+
+      const T_START = "2026-04-25T00:00:00Z";
+      const T_END   = "2026-04-25T01:00:00Z";
+
+      // Per-template sample params. Computed-from arrays are precomputed here
+      // since the kernel doesn't run in the smoke test.
+      function sampleParams(name, originLon, originLat) {
+        const base = {
+          artifact_id: `urn:smoke:${name}`,
+          owning_entity_id: `urn:smoke-entity:${name}`,
+          time_validity_start: T_START,
+          time_validity_end: T_END,
+          origin_lon_deg: originLon,
+          origin_lat_deg: originLat,
+          origin_alt_m: 200,
+        };
+        switch (name) {
+          case "ew-cone": {
+            // Fan apex at origin, sweeping 045° azimuth, 30° beamwidth, 1500 m range.
+            const apex = [originLon, originLat, 200];
+            const arc = arcPositions(originLon, originLat, 200, 45, 30, 1500, 12);
+            return { ...base, azimuth_deg: 45, beamwidth_deg: 30, effective_range_m: 1500,
+              cone_polygon_positions: [...apex, ...arc, ...apex] };
+          }
+          case "uas-corridor":
+            return { ...base, width_m: 200, altitude_band_lower_m: 300, altitude_band_upper_m: 800,
+              waypoint_positions: [
+                originLon - 0.012, originLat - 0.005, 500,
+                originLon,         originLat,         500,
+                originLon + 0.012, originLat + 0.005, 500,
+              ] };
+          case "radar-fan": {
+            const apex = [originLon, originLat, 200];
+            const arc = arcPositions(originLon, originLat, 200, 270, 90, 2000, 16);
+            return { ...base, azimuth_deg: 270, sweep_arc_deg: 90, range_m: 2000,
+              fan_polygon_positions: [...apex, ...arc, ...apex] };
+          }
+          case "jamming-circle":
+            return { ...base, radius_m: 1200, power_w: 250, band: "VHF" };
+          case "satellite-swath":
+            return { ...base, swath_width_m: 8000, pass_duration_s: 120,
+              ground_track_positions: [
+                originLon - 0.06, originLat - 0.02, 0,
+                originLon,        originLat,        0,
+                originLon + 0.06, originLat + 0.02, 0,
+              ] };
+          case "indirect-fire-arc": {
+            const firer = [originLon - 0.012, originLat - 0.008, 200];
+            const impact = [originLon + 0.012, originLat + 0.008, 200];
+            return { ...base,
+              firer_lon_deg: firer[0], firer_lat_deg: firer[1], firer_alt_m: firer[2],
+              impact_lon_deg: impact[0], impact_lat_deg: impact[1], impact_alt_m: impact[2],
+              range_m: 2500, time_of_flight_s: 18,
+              dispersion_ellipse_a_m: 30, dispersion_ellipse_b_m: 30,
+              trajectory_positions: ballisticArc(firer, impact, 1200, 16) };
+          }
+          case "ir-plume":
+            return { ...base, peak_intensity_w_per_sr: 800, decay_s: 60,
+              plume_height_m: 250, plume_top_radius_m: 60, plume_base_radius_m: 25 };
+          case "masint-cell":
+            return { ...base, polygon_area_m2: 90000, dwell_s: 300,
+              cell_polygon_positions: rectPolygon(originLon, originLat, 0.006, 0.005) };
+          case "keyhole-footprint":
+            return { ...base, polygon_area_m2: 75000, confidence: 0.85,
+              footprint_polygon_positions: rectPolygon(originLon, originLat, 0.005, 0.005) };
+          default:
+            return base;
+        }
+      }
+
+      // Geometry helpers — flat-earth approximations, sufficient for a smoke test at city scale.
+      function arcPositions(lon, lat, alt, azimuthDeg, sweepDeg, rangeM, samples) {
+        const out = [];
+        const start = azimuthDeg - sweepDeg / 2;
+        const end = azimuthDeg + sweepDeg / 2;
+        const metersPerDegLat = 111_000;
+        const metersPerDegLon = 111_000 * Math.cos((lat * Math.PI) / 180);
+        for (let i = 0; i <= samples; i++) {
+          const az = (start + ((end - start) * i) / samples) * (Math.PI / 180);
+          const dLon = (Math.sin(az) * rangeM) / metersPerDegLon;
+          const dLat = (Math.cos(az) * rangeM) / metersPerDegLat;
+          out.push(lon + dLon, lat + dLat, alt);
+        }
+        return out;
+      }
+
+      function ballisticArc(firer, impact, apexHeightM, samples) {
+        const out = [];
+        for (let i = 0; i <= samples; i++) {
+          const t = i / samples;
+          const lon = firer[0] + (impact[0] - firer[0]) * t;
+          const lat = firer[1] + (impact[1] - firer[1]) * t;
+          const baseAlt = firer[2] + (impact[2] - firer[2]) * t;
+          const arcAlt = apexHeightM * 4 * t * (1 - t); // parabolic apex
+          out.push(lon, lat, baseAlt + arcAlt);
+        }
+        return out;
+      }
+
+      function rectPolygon(lon, lat, dLonHalf, dLatHalf) {
+        return [
+          lon - dLonHalf, lat - dLatHalf, 0,
+          lon + dLonHalf, lat - dLatHalf, 0,
+          lon + dLonHalf, lat + dLatHalf, 0,
+          lon - dLonHalf, lat + dLatHalf, 0,
+          lon - dLonHalf, lat - dLatHalf, 0,
+        ];
+      }
+
+      // Mustache-lite substitution. If the entire string is "{{token}}", replace with the
+      // param value (preserving its type). Otherwise interpolate as text.
+      function fill(node, params) {
+        if (typeof node === "string") {
+          const m = node.match(/^\{\{(\w+)\}\}$/);
+          if (m) return m[1] in params ? params[m[1]] : node;
+          return node.replace(/\{\{(\w+)\}\}/g, (_, k) => k in params ? params[k] : `{{${k}}}`);
+        }
+        if (Array.isArray(node)) return node.map(v => fill(v, params));
+        if (node && typeof node === "object") {
+          const out = {};
+          for (const [k, v] of Object.entries(node)) out[k] = fill(v, params);
+          return out;
+        }
+        return node;
+      }
+
+      const viewer = new Cesium.Viewer("cesium", {
+        timeline: false, animation: false, baseLayerPicker: false, geocoder: false,
+        homeButton: false, sceneModePicker: false, navigationHelpButton: false,
+        fullscreenButton: false,
+      });
+      viewer.camera.setView({
+        destination: Cesium.Cartesian3.fromDegrees(NASHVILLE.lon, NASHVILLE.lat, NASHVILLE.alt),
+        orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 },
+      });
+
+      const status = document.getElementById("status");
+      const lines = [];
+      function log(msg, cls = "") { lines.push(`<div class="${cls}">${msg}</div>`); status.innerHTML = lines.join(""); }
+
+      (async () => {
+        for (const name of TEMPLATES) {
+          try {
+            const tpl = await fetch(`./${name}.czml.json`).then(r => {
+              if (!r.ok) throw new Error(`HTTP ${r.status}`);
+              return r.json();
+            });
+            const offset = GRID[name];
+            const params = sampleParams(name, NASHVILLE.lon + offset.dLon, NASHVILLE.lat + offset.dLat);
+            const filled = fill(tpl.base, params);
+            const czml = [
+              { id: "document", name, version: "1.0",
+                clock: { interval: `${T_START}/${T_END}`, currentTime: T_START, multiplier: 1 } },
+              filled,
+            ];
+            const ds = await Cesium.CzmlDataSource.load(czml);
+            viewer.dataSources.add(ds);
+            log(`✓ ${name}`, "ok");
+          } catch (err) {
+            log(`✗ ${name}: ${err.message}`, "err");
+            console.error(name, err);
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>
