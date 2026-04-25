@@ -1,0 +1,38 @@
+{
+  "template_id": "masint-cell",
+  "version": 1,
+  "description": "Measurement-and-signature intelligence collection cell: ground polygon enclosing the area being characterized, with dwell time.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "MASINT cell — {{owning_entity_id}}",
+    "description": "MASINT cell, area {{polygon_area_m2}} m², dwell {{dwell_s}} s",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "polygon": {
+      "positions": { "cartographicDegrees": "{{cell_polygon_positions}}" },
+      "material": { "solidColor": { "color": { "rgba": "{{fill_rgba}}" } } },
+      "outline": true,
+      "outlineColor": { "rgba": "{{outline_rgba}}" },
+      "heightReference": "CLAMP_TO_GROUND"
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "cell_polygon_positions": {
+      "type": "number_array",
+      "units": "lon_lat_alt_triples",
+      "required": true,
+      "description": "Closed polygon vertices (kernel-computed or hand-authored)."
+    },
+    "polygon_area_m2": { "type": "number", "units": "m^2", "required": true },
+    "dwell_s":         { "type": "number", "units": "s",   "required": true },
+    "fill_rgba":    { "type": "rgba", "default": [180, 80, 200, 70] },
+    "outline_rgba": { "type": "rgba", "default": [180, 80, 200, 220] }
+  },
+  "capability_constraints": {
+    "polygon_area_m2": { "min": 1000, "max": 10000000, "units": "m^2" },
+    "dwell_s":         { "min": 30,   "max": 7200,     "units": "s" }
+  }
+}

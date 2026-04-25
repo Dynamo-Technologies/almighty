@@ -1,0 +1,46 @@
+{
+  "template_id": "radar-fan",
+  "version": 1,
+  "description": "Radar coverage fan: sectorial polygon at sensor altitude, oriented by azimuth and bounded by sweep arc and range.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "Radar fan — {{owning_entity_id}}",
+    "description": "Radar fan, azimuth {{azimuth_deg}}°, sweep {{sweep_arc_deg}}°, range {{range_m}} m",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "polygon": {
+      "positions": { "cartographicDegrees": "{{fan_polygon_positions}}" },
+      "material": { "solidColor": { "color": { "rgba": "{{fill_rgba}}" } } },
+      "outline": true,
+      "outlineColor": { "rgba": "{{outline_rgba}}" },
+      "perPositionHeight": false,
+      "height": "{{origin_alt_m}}"
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "origin_lon_deg":      { "type": "number",   "units": "deg", "required": true },
+    "origin_lat_deg":      { "type": "number",   "units": "deg", "required": true },
+    "origin_alt_m":        { "type": "number",   "units": "m",   "required": true },
+    "azimuth_deg":         { "type": "number",   "units": "deg", "required": true },
+    "sweep_arc_deg":       { "type": "number",   "units": "deg", "required": true },
+    "range_m":             { "type": "number",   "units": "m",   "required": true },
+    "elevation_deg":       { "type": "number",   "units": "deg", "required": false, "description": "Optional elevation tilt for 3D fans; v1 ignores this and renders flat." },
+    "fan_polygon_positions": {
+      "type": "number_array",
+      "units": "lon_lat_alt_triples",
+      "required": true,
+      "computed_from": ["origin_lon_deg", "origin_lat_deg", "origin_alt_m", "azimuth_deg", "sweep_arc_deg", "range_m"],
+      "description": "Apex + arc vertices computed by the kernel."
+    },
+    "fill_rgba":    { "type": "rgba", "default": [80, 200, 120, 70] },
+    "outline_rgba": { "type": "rgba", "default": [80, 200, 120, 220] }
+  },
+  "capability_constraints": {
+    "azimuth_deg":   { "min": 0,   "max": 359,   "units": "deg" },
+    "sweep_arc_deg": { "min": 5,   "max": 360,   "units": "deg" },
+    "range_m":       { "min": 500, "max": 80000, "units": "m" }
+  }
+}

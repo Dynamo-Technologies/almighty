@@ -1,0 +1,38 @@
+{
+  "template_id": "jamming-circle",
+  "version": 1,
+  "description": "Omnidirectional jamming coverage area: circle at emitter ground point, parameterized by radius and band.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "Jamming circle — {{owning_entity_id}}",
+    "description": "Jamming circle, radius {{radius_m}} m, power {{power_w}} W, band {{band}}",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "position": { "cartographicDegrees": ["{{origin_lon_deg}}", "{{origin_lat_deg}}", "{{origin_alt_m}}"] },
+    "ellipse": {
+      "semiMajorAxis": "{{radius_m}}",
+      "semiMinorAxis": "{{radius_m}}",
+      "material": { "solidColor": { "color": { "rgba": "{{fill_rgba}}" } } },
+      "outline": true,
+      "outlineColor": { "rgba": "{{outline_rgba}}" },
+      "heightReference": "CLAMP_TO_GROUND"
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "origin_lon_deg":      { "type": "number",   "units": "deg", "required": true },
+    "origin_lat_deg":      { "type": "number",   "units": "deg", "required": true },
+    "origin_alt_m":        { "type": "number",   "units": "m",   "required": true },
+    "radius_m":            { "type": "number",   "units": "m",   "required": true },
+    "power_w":             { "type": "number",   "units": "W",   "required": true },
+    "band":                { "type": "string",   "required": true, "description": "Frequency band label (e.g., VHF, UHF, L, S). Informational; not validated by template." },
+    "fill_rgba":    { "type": "rgba", "default": [255, 80, 60, 90] },
+    "outline_rgba": { "type": "rgba", "default": [255, 80, 60, 220] }
+  },
+  "capability_constraints": {
+    "radius_m": { "min": 100, "max": 8000, "units": "m" },
+    "power_w":  { "min": 10,  "max": 1500, "units": "W" }
+  }
+}

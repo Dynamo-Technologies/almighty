@@ -1,0 +1,40 @@
+{
+  "template_id": "satellite-swath",
+  "version": 1,
+  "description": "Satellite sensor ground swath traced as a wide corridor along the orbit ground track.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "Satellite swath — {{owning_entity_id}}",
+    "description": "Swath width {{swath_width_m}} m, pass duration {{pass_duration_s}} s",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "corridor": {
+      "positions": { "cartographicDegrees": "{{ground_track_positions}}" },
+      "width": "{{swath_width_m}}",
+      "cornerType": "MITERED",
+      "material": { "solidColor": { "color": { "rgba": "{{fill_rgba}}" } } },
+      "outline": true,
+      "outlineColor": { "rgba": "{{outline_rgba}}" },
+      "heightReference": "CLAMP_TO_GROUND"
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "ground_track_positions": {
+      "type": "number_array",
+      "units": "lon_lat_alt_triples",
+      "required": true,
+      "description": "Polyline of orbit ground track waypoints (kernel-computed from TLEs or scenario script)."
+    },
+    "swath_width_m":   { "type": "number", "units": "m", "required": true },
+    "pass_duration_s": { "type": "number", "units": "s", "required": true },
+    "fill_rgba":    { "type": "rgba", "default": [180, 200, 80, 60] },
+    "outline_rgba": { "type": "rgba", "default": [180, 200, 80, 200] }
+  },
+  "capability_constraints": {
+    "swath_width_m":   { "min": 5000, "max": 250000, "units": "m" },
+    "pass_duration_s": { "min": 30,   "max": 1800,   "units": "s" }
+  }
+}

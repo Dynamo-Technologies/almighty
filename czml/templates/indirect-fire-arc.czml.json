@@ -1,0 +1,48 @@
+{
+  "template_id": "indirect-fire-arc",
+  "version": 1,
+  "description": "Ballistic indirect-fire trajectory from firer to impact point, with a dispersion ellipse at the impact.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "Indirect fire arc — {{owning_entity_id}}",
+    "description": "Indirect fire, range {{range_m}} m, time-of-flight {{time_of_flight_s}} s",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "polyline": {
+      "positions": { "cartographicDegrees": "{{trajectory_positions}}" },
+      "width": 3,
+      "material": { "solidColor": { "color": { "rgba": "{{trajectory_rgba}}" } } },
+      "clampToGround": false,
+      "arcType": "NONE"
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "firer_lon_deg":       { "type": "number",   "units": "deg", "required": true },
+    "firer_lat_deg":       { "type": "number",   "units": "deg", "required": true },
+    "firer_alt_m":         { "type": "number",   "units": "m",   "required": true },
+    "impact_lon_deg":      { "type": "number",   "units": "deg", "required": true },
+    "impact_lat_deg":      { "type": "number",   "units": "deg", "required": true },
+    "impact_alt_m":        { "type": "number",   "units": "m",   "required": true },
+    "range_m":                  { "type": "number", "units": "m", "required": true },
+    "time_of_flight_s":         { "type": "number", "units": "s", "required": true },
+    "dispersion_ellipse_a_m":   { "type": "number", "units": "m", "required": true },
+    "dispersion_ellipse_b_m":   { "type": "number", "units": "m", "required": true },
+    "trajectory_positions": {
+      "type": "number_array",
+      "units": "lon_lat_alt_triples",
+      "required": true,
+      "computed_from": ["firer_*", "impact_*", "time_of_flight_s"],
+      "description": "Sampled ballistic arc points (kernel-computed; ~16 samples between firer and impact)."
+    },
+    "trajectory_rgba": { "type": "rgba", "default": [255, 200, 80, 220] }
+  },
+  "capability_constraints": {
+    "range_m":                 { "min": 1000, "max": 30000, "units": "m" },
+    "dispersion_ellipse_a_m":  { "min": 5,    "max": 300,   "units": "m" },
+    "dispersion_ellipse_b_m":  { "min": 5,    "max": 300,   "units": "m" },
+    "time_of_flight_s":        { "min": 1,    "max": 90,    "units": "s" }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "template_id": "uas-corridor",
+  "version": 1,
+  "description": "UAS flight corridor along a polyline, with a width and altitude band.",
+  "base": {
+    "id": "{{artifact_id}}",
+    "name": "UAS corridor — {{owning_entity_id}}",
+    "description": "UAS corridor, width {{width_m}} m, altitude {{altitude_band_lower_m}}–{{altitude_band_upper_m}} m",
+    "availability": "{{time_validity_start}}/{{time_validity_end}}",
+    "corridor": {
+      "positions": { "cartographicDegrees": "{{waypoint_positions}}" },
+      "width": "{{width_m}}",
+      "height": "{{altitude_band_lower_m}}",
+      "extrudedHeight": "{{altitude_band_upper_m}}",
+      "cornerType": "ROUNDED",
+      "material": { "solidColor": { "color": { "rgba": "{{fill_rgba}}" } } },
+      "outline": true,
+      "outlineColor": { "rgba": "{{outline_rgba}}" }
+    }
+  },
+  "params": {
+    "artifact_id":         { "type": "uuid",     "required": true },
+    "owning_entity_id":    { "type": "uuid",     "required": true },
+    "time_validity_start": { "type": "iso8601",  "required": true },
+    "time_validity_end":   { "type": "iso8601",  "required": true },
+    "waypoint_positions": {
+      "type": "number_array",
+      "units": "lon_lat_alt_triples",
+      "required": true,
+      "description": "Flat array of [lon, lat, alt, …] for each corridor waypoint (≥ 2 waypoints)."
+    },
+    "width_m":                { "type": "number", "units": "m", "required": true },
+    "altitude_band_lower_m":  { "type": "number", "units": "m", "required": true },
+    "altitude_band_upper_m":  { "type": "number", "units": "m", "required": true },
+    "fill_rgba":    { "type": "rgba", "default": [120, 200, 255, 80] },
+    "outline_rgba": { "type": "rgba", "default": [120, 200, 255, 220] }
+  },
+  "capability_constraints": {
+    "altitude_band_lower_m": { "min": 100,  "max": 12000, "units": "m" },
+    "altitude_band_upper_m": { "min": 100,  "max": 12000, "units": "m" },
+    "width_m":               { "min": 50,   "max": 5000,  "units": "m" }
+  }
+}
