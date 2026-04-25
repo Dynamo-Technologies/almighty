@@ -1,12 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { CameraFlyTo, Viewer } from "resium";
-import {
-  Cartesian3,
-  Ion,
-  Math as CesiumMath,
-  createOsmBuildingsAsync,
-  type Viewer as CesiumViewer,
-} from "cesium";
+import { Cartesian3, Ion, Math as CesiumMath } from "cesium";
 
 const NASHVILLE_LON = -86.78;
 const NASHVILLE_LAT = 36.18;
@@ -31,33 +25,11 @@ const NASHVILLE_ORIENTATION = {
 };
 
 export function CesiumScene() {
-  const viewerRef = useRef<{ cesiumElement?: CesiumViewer }>(null);
   const [recenterToken, setRecenterToken] = useState(0);
-
-  useEffect(() => {
-    const viewer = viewerRef.current?.cesiumElement;
-    if (!viewer) return;
-
-    let cancelled = false;
-    void (async () => {
-      try {
-        const buildings = await createOsmBuildingsAsync();
-        if (cancelled) return;
-        viewer.scene.primitives.add(buildings);
-      } catch (err) {
-        console.warn("OSM Buildings failed to load (ion token missing or invalid?)", err);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <>
       <Viewer
-        ref={viewerRef}
         full
         timeline={false}
         animation={false}
