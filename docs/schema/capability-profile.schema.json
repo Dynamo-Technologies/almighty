@@ -1,0 +1,331 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://almighty.dynamo.works/schema/capability-profile.schema.json",
+  "title": "Almighty capability profile",
+  "description": "Structural contract for a v1 Almighty capability profile. Companion semantic spec at docs/schema/capability-profiles.md (WS-106). Cross-officer validation rules (e.g., officer_types_available <-> per-officer block presence; uncertainty restricted to RED) are enforced by the validator (WS-202) at registration time and intentionally not re-encoded here as conditional schemas.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_id",
+    "version",
+    "display_name",
+    "force_affiliation",
+    "officer_types_available",
+    "action_verbs_available",
+    "effect_parameter_ranges",
+    "entity_bindings"
+  ],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "force_affiliation": {
+      "enum": ["BLUE", "RED", "WHITE", "NEUTRAL"]
+    },
+    "officer_types_available": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/officerType" }
+    },
+    "action_verbs_available": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/actionVerb" }
+    },
+    "sensor": { "$ref": "#/$defs/sensorBlock" },
+    "effector": { "$ref": "#/$defs/effectorBlock" },
+    "mover": { "$ref": "#/$defs/moverBlock" },
+    "communicator": { "$ref": "#/$defs/communicatorBlock" },
+    "commander": { "$ref": "#/$defs/commanderBlock" },
+    "effect_parameter_ranges": { "$ref": "#/$defs/effectParameterRanges" },
+    "uncertainty": { "$ref": "#/$defs/uncertaintyBlock" },
+    "entity_bindings": { "$ref": "#/$defs/entityBindings" },
+    "frozen_at": {
+      "type": ["string", "null"],
+      "format": "date-time"
+    },
+    "forked_from": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "version"],
+      "properties": {
+        "profile_id": { "type": "string", "format": "uuid" },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+
+  "$defs": {
+    "officerType": {
+      "enum": ["SENSOR", "EFFECTOR", "MOVER", "COMMUNICATOR", "COMMANDER"]
+    },
+
+    "actionVerb": {
+      "enum": [
+        "detect", "track", "classify", "lose_track",
+        "engage", "suppress", "destroy", "disable",
+        "move_to", "follow_route", "halt", "assume_posture",
+        "send", "relay", "jam", "report",
+        "issue_order", "request_support", "delegate", "escalate"
+      ]
+    },
+
+    "sensorModality": {
+      "enum": ["EO_IR", "RF", "RADAR", "ACOUSTIC", "SEISMIC", "MASINT_MULTI"]
+    },
+
+    "rfBand": {
+      "enum": ["HF", "VHF", "UHF", "L", "S", "C", "X", "KU", "KA"]
+    },
+
+    "commsChannel": {
+      "enum": ["VHF", "UHF", "HF", "SATCOM", "DATA"]
+    },
+
+    "posture": {
+      "enum": ["HALTED", "MOUNTED", "DISMOUNTED", "DUG_IN", "ALERT", "REST"]
+    },
+
+    "echelon": {
+      "enum": ["COMPANY", "BATTALION", "BRIGADE", "DIVISION", "WHITE_CELL"]
+    },
+
+    "deliveryMode": {
+      "enum": ["DIRECT", "INDIRECT", "EW", "CYBER"]
+    },
+
+    "supportType": {
+      "enum": ["FIRES", "ISR", "MEDEVAC", "LOGISTICS", "EW", "AIR"]
+    },
+
+    "reportType": {
+      "enum": ["SITREP", "SPOTREP", "LOGSTAT", "CASEVAC", "INTREP"]
+    },
+
+    "effectFamily": {
+      "enum": [
+        "ew_cone", "uas_corridor", "radar_fan", "jamming_circle",
+        "satellite_swath", "indirect_fire_arc", "ir_plume",
+        "masint_cell", "keyhole_footprint"
+      ]
+    },
+
+    "minMaxFloat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      }
+    },
+
+    "sensorBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modalities", "max_concurrent_tracks", "max_update_rate_hz", "default_track_lifetime_s"],
+      "properties": {
+        "modalities": {
+          "type": "object",
+          "minProperties": 0,
+          "propertyNames": { "$ref": "#/$defs/sensorModality" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["max_range_m", "min_classify_dwell_s"],
+            "properties": {
+              "max_range_m": { "type": "number", "exclusiveMinimum": 0 },
+              "min_classify_dwell_s": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "max_concurrent_tracks": { "type": "integer", "minimum": 0 },
+        "max_update_rate_hz": { "type": "number", "exclusiveMinimum": 0 },
+        "default_track_lifetime_s": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+
+    "effectorBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["weapon_systems", "max_suppression_area_m2", "cyber_disable"],
+      "properties": {
+        "weapon_systems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "delivery_mode", "effective_range_m", "ammo_remaining", "time_of_flight_s", "supported_verbs"],
+            "properties": {
+              "id": { "type": "string", "minLength": 1 },
+              "delivery_mode": { "$ref": "#/$defs/deliveryMode" },
+              "effective_range_m": { "type": "number", "exclusiveMinimum": 0 },
+              "ammo_remaining": { "type": "integer", "minimum": 0 },
+              "time_of_flight_s": { "type": "number", "minimum": 0 },
+              "supported_verbs": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "enum": ["engage", "suppress", "destroy", "disable"] }
+              }
+            }
+          }
+        },
+        "max_suppression_area_m2": { "type": "number", "minimum": 0 },
+        "cyber_disable": { "type": "boolean" }
+      }
+    },
+
+    "moverBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cruise_speed_mps", "max_speed_mps", "allowed_postures", "posture_transitions"],
+      "properties": {
+        "cruise_speed_mps": { "type": "number", "minimum": 0 },
+        "max_speed_mps": { "type": "number", "minimum": 0 },
+        "allowed_postures": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/posture" }
+        },
+        "posture_transitions": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/posture" },
+          "additionalProperties": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/posture" }
+          }
+        }
+      }
+    },
+
+    "communicatorBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["channels", "bands", "advertise_corridor", "reports_allowed"],
+      "properties": {
+        "channels": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/commsChannel" }
+        },
+        "bands": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/rfBand" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["max_power_w", "max_coverage_area_m2"],
+            "properties": {
+              "max_power_w": { "type": "number", "exclusiveMinimum": 0 },
+              "max_coverage_area_m2": { "type": "number", "exclusiveMinimum": 0 }
+            }
+          }
+        },
+        "advertise_corridor": { "type": "boolean" },
+        "reports_allowed": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/reportType" }
+        }
+      }
+    },
+
+    "commanderBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["echelon", "subordinates_under", "delegatable_verbs", "request_support_types", "max_delegation_ttl_turns"],
+      "properties": {
+        "echelon": { "$ref": "#/$defs/echelon" },
+        "subordinates_under": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "delegatable_verbs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/actionVerb" }
+        },
+        "request_support_types": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/supportType" }
+        },
+        "max_delegation_ttl_turns": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "effectParameterRanges": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/effectFamily" },
+      "additionalProperties": {
+        "type": "object",
+        "minProperties": 1,
+        "additionalProperties": { "$ref": "#/$defs/minMaxFloat" }
+      }
+    },
+
+    "uncertaintyBlock": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Dot-separated path into the profile, with array-by-id sugar `[<id>]`. Resolution is the validator's job."
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["band_pct"],
+            "properties": {
+              "band_pct": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["band_lower", "band_upper"],
+            "properties": {
+              "band_lower": { "type": "number" },
+              "band_upper": { "type": "number" }
+            }
+          }
+        ]
+      }
+    },
+
+    "entityBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "anyOf": [
+        { "required": ["type_subtype_refs"] },
+        { "required": ["specific_ids"] }
+      ],
+      "properties": {
+        "type_subtype_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "specific_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uuid" }
+        }
+      }
+    }
+  }
+}
