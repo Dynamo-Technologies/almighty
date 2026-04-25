@@ -3,6 +3,7 @@ node_modules/
 dist/
 .env
 .env.local
+.vite/
 
 # Python
 __pycache__/
