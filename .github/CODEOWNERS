@@ -1,0 +1,22 @@
+# Default: shane reviews everything until tier leads are confirmed
+* @shanedynamo
+
+# Tier 1 — Renderer
+/web/                 @alexcurnowdynamo @shanedynamo
+/czml/                @alexcurnowdynamo @shanedynamo
+
+# Tier 2 — Orchestration
+/services/control-plane/   @alexcurnowdynamo @shanedynamo
+/services/websocket/       @alexcurnowdynamo @shanedynamo
+
+# Tier 3 — Agents
+/agents/              @devindynamo @shanedynamo
+
+# Tier 4 — Kernel
+/kernel/              @shanedynamo @devindynamo
+/services/czml-validator/  @devindynamo @shanedynamo
+/services/czml-adapter/    @devindynamo @shanedynamo
+
+# Cross-cutting
+/infra/               @alexcurnowdynamo @shanedynamo
+/docs/                @shanedynamo
