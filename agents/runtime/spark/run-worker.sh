@@ -15,7 +15,17 @@ set -euxo pipefail
 
 REPO_ROOT="${1:-$HOME/almighty}"
 PORT="${PORT:-7000}"
-IMAGE="${IMAGE:-crewai:stig-hardened-boto3}"
+# Default image: stock python:3.12-slim. The original plan reused the
+# crewai:stig-hardened-boto3 image already on spark-763d, but that image
+# is deliberately offline (no pip; only the boto3 vendored chain at
+# /opt/python-vendor) and we'd need a new image layer with pre-downloaded
+# wheels to install our deps. For a hackathon demo on a private tailnet
+# the STIG posture isn't load-bearing — using a stock slim image keeps
+# the launcher simple. To revert to a STIG-hardened path, build an image
+# FROM crewai:stig-hardened-boto3 with pre-vendored wheels for
+# fastapi / uvicorn / httpx / pyrapide / pydantic in /opt/python-vendor,
+# then `IMAGE=your-image:tag ./run-worker.sh`.
+IMAGE="${IMAGE:-python:3.12-slim}"
 CONTAINER="${CONTAINER:-almighty-worker}"
 
 # Pre-flight: repo must exist and be on the right branch.
@@ -57,13 +67,6 @@ docker run -d --name "$CONTAINER" \
   "$IMAGE" \
   -c "
     set -e
-    # crewai:stig-hardened-boto3 is on registry.access.redhat.com/ubi9/
-    # python-312, an s2i-style image whose real Python 3.12 + pip live in
-    # /opt/app-root. \`--entrypoint bash\` bypasses the s2i shim that
-    # normally activates that env, so /usr/bin/python3 (UBI9 system 3.9,
-    # no pip) is what we'd hit by default. Prepend the app-root bin dir
-    # so python3 resolves to 3.12 with pip baked in.
-    export PATH=/opt/app-root/bin:\$PATH
     python3 -m pip install --no-cache-dir --quiet \
       fastapi 'uvicorn[standard]' httpx pyrapide pydantic
     cd /app/almighty
