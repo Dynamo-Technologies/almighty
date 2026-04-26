@@ -1,18 +1,16 @@
 """Blue battalion crew orchestration (WS-403).
 
-The v1 crew is **deterministic**. Each role is defined as a real
-:class:`crewai.Agent` with the proper role / goal / backstory / tools so
-the agent SHAPE matches what WS-403 will need when LLM-driven
-execution lands. But the actual between-turn cycle is a scripted
-sequence that calls each tool's ``_run`` directly, in the WS-105 order:
+S2 / CO A / CO B / CO C / S6 still run as scripted deterministic
+between-turn steps in the WS-105 order:
 
     S2  → S3  → companies (A → B → C)  → S6
 
-This satisfies the DoD ("crew runs one full between-turn cycle producing
-valid PyRapide events") without burning API keys or introducing
-nondeterminism into the test suite. v2 swaps in ``Crew.kickoff()`` once
-LLM access and cost / latency budgets are sorted; the spec files (s2.py,
-s3.py, etc.) are already shaped for it.
+S3 is LLM-driven via Gemma 4 26B-A4B on spark-763d (per the hackathon
+demo spec): the role reads PyRapide's causal-order topological view as
+its situation report, decides via Crew.kickoff(), and the resulting
+commit cites the situation-report events as causal_predecessors. If
+the LLM call fails, S3 falls back to the v1 deterministic pair so the
+demo never hard-stops on stage.
 
 Each agent gets its own ``OfficerToolContext`` with its own
 ``agent_entity_id`` so events committed to the namespaced DAG are
@@ -23,10 +21,12 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Final
+from typing import Any, Callable, Final, Union
 from uuid import UUID, uuid4
 
 from almighty_agent_runtime.crews import CrewContext, CrewResult
+from almighty_agent_runtime.llm_clients import build_blue_llm
+from almighty_agent_runtime.llm_step import run_llm_role_step
 from almighty_czml_validator import Validator
 from almighty_kernel.dag import NamespacedDag
 from almighty_officer_tools import OfficerToolContext, build_all_tools
@@ -107,11 +107,13 @@ def _build_role(
 # Deterministic between-turn script
 # ---------------------------------------------------------------------------
 
-# A single "step" calls one tool with a payload; the script is a list of
-# these. Steps are executed sequentially in the order declared. Any tool
-# raising ToolError aborts the cycle (failing the test).
+# A single "step" either calls one tool (returning a single result dict)
+# or — for LLM-driven roles — drives one or more tool calls via CrewAI
+# (returning a LIST of result dicts, one per committed event). The main
+# loop in ``run_blue_crew`` handles both shapes.
 
-_StepFn = Callable[[dict[str, _RoleBinding]], dict[str, Any]]
+_StepResult = Union[dict[str, Any], list[dict[str, Any]]]
+_StepFn = Callable[[dict[str, "_RoleBinding"]], _StepResult]
 
 
 def _step_s2_detect(roles: dict[str, _RoleBinding]) -> dict[str, Any]:
@@ -226,12 +228,84 @@ def _step_s6_report(roles: dict[str, _RoleBinding]) -> dict[str, Any]:
     )
 
 
-# Order matters: S2 → S3 → companies (A → B → C) → S6.
+def _step_s3_llm_decide(roles: dict[str, _RoleBinding]) -> list[dict[str, Any]]:
+    """LLM-driven S3 decision step (Gemma 4 26B-A4B on spark-763d).
+
+    Replaces the deterministic _step_s3_issue_order_to_a +
+    _step_s3_request_isr pair. S3 reads the situation report (S2's
+    detect + classify events from earlier in this cycle) and decides
+    which orders to issue. Committed events carry causal_predecessors
+    back to the events the LLM actually saw.
+
+    Falls back to the deterministic pair if the LLM call raises so the
+    demo never hard-fails on stage.
+
+    Returns a list of step dicts (one per committed event) so the main
+    loop can extend ``step_outcomes`` uniformly.
+    """
+    s3_role = roles["s3"]
+    dag = s3_role.ctx.kernel_dag
+    tenant_id = s3_role.ctx.tenant_id
+    scenario_id = s3_role.ctx.scenario_id
+
+    before_ids = {e.event_id for e in dag.read(tenant_id=tenant_id, scenario_id=scenario_id)}
+
+    try:
+        llm = build_blue_llm()
+        run_llm_role_step(
+            ctx=s3_role.ctx,
+            agent=s3_role.agent,
+            llm=llm,
+            task_description=(
+                "You are the battalion S3 at the Cumberland River crossing. "
+                "Based on the situation report, decide what orders to issue "
+                "and what support to request. Use issue_order to direct "
+                "Companies A/B/C; use request_support for ISR/EW/fires from "
+                "higher echelon. Keep your action minimal — at most one "
+                "issue_order and one request_support per turn."
+            ),
+            expected_output=(
+                "Tool calls only. No prose. Pick one or two of: "
+                "issue_order(...) or request_support(...)."
+            ),
+        )
+        new_events = [
+            e for e in dag.read(tenant_id=tenant_id, scenario_id=scenario_id)
+            if e.event_id not in before_ids
+        ]
+        return [
+            {
+                "step": f"s3.llm_decide.{e.action_verb}",
+                "event_id": str(e.event_id),
+                "verb": e.action_verb,
+                "officer_type": e.source_officer_type,
+                # Inferred: spatial verbs carry czml_template; non-spatial don't
+                "validator": "accepted" if e.payload.get("czml_template") else "skipped",
+                "causal_predecessors": [str(p) for p in e.causal_predecessors],
+                "llm_driven": True,
+            }
+            for e in new_events
+        ]
+    except Exception as exc:
+        # Demo safety net: fall back to the deterministic pair so the
+        # event chain still produces something for the renderer.
+        s3_role.ctx.causal_predecessors = []  # defense-in-depth
+        results = [
+            _step_s3_issue_order_to_a(roles),
+            _step_s3_request_isr(roles),
+        ]
+        for r in results:
+            r["step"] = f"s3.llm_decide_fallback.{r['verb']}"
+            r["llm_driven"] = False
+            r["fallback_reason"] = f"{type(exc).__name__}: {exc}"
+        return results
+
+
+# Order matters: S2 → S3 (LLM) → companies (A → B → C) → S6.
 _BETWEEN_TURN_SCRIPT: Final[list[tuple[str, _StepFn]]] = [
     ("s2.detect", _step_s2_detect),
     ("s2.classify", _step_s2_classify),
-    ("s3.issue_order", _step_s3_issue_order_to_a),
-    ("s3.request_support", _step_s3_request_isr),
+    ("s3.llm_decide", _step_s3_llm_decide),
     ("co_a.assume_posture", _step_co_a_assume_posture),
     ("co_a.send", _step_co_a_send_sitrep),
     ("co_b.halt", _step_co_b_halt),
@@ -298,7 +372,12 @@ def run_blue_crew(crew_ctx: CrewContext) -> CrewResult:
     step_outcomes: list[dict[str, Any]] = []
     for label, step_fn in _BETWEEN_TURN_SCRIPT:
         result = step_fn(bindings)
-        step_outcomes.append({"step": label, **result})
+        if isinstance(result, list):
+            # LLM-driven step returns one entry per committed event; the
+            # entries already have their own "step" labels.
+            step_outcomes.extend(result)
+        else:
+            step_outcomes.append({"step": label, **result})
 
     duration_ms = int((time.perf_counter() - started) * 1000)
 
