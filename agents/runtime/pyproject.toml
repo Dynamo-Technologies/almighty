@@ -1,0 +1,37 @@
+[project]
+name = "almighty-agent-runtime"
+version = "0.1.0"
+description = "Almighty between-turn agent execution harness (WS-401)"
+requires-python = ">=3.11"
+authors = [
+    { name = "Almighty Team" },
+]
+dependencies = [
+    "celery>=5.4",
+    "redis>=5.0",
+    "httpx>=0.27",
+    "pydantic>=2.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-httpx>=0.30",
+    "pytest-timeout>=2.3",
+]
+
+[project.scripts]
+almighty-runtime-worker = "almighty_agent_runtime.worker:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["almighty_agent_runtime*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+timeout = 30
