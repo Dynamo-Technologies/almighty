@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { CameraFlyTo, Viewer } from "resium";
 import { Cartesian3, Ion, Math as CesiumMath } from "cesium";
 
@@ -24,7 +24,11 @@ const NASHVILLE_ORIENTATION = {
   roll: 0,
 };
 
-export function CesiumScene() {
+type CesiumSceneProps = {
+  children?: ReactNode;
+};
+
+export function CesiumScene({ children }: CesiumSceneProps) {
   const [recenterToken, setRecenterToken] = useState(0);
 
   return (
@@ -47,6 +51,7 @@ export function CesiumScene() {
           duration={recenterToken === 0 ? 0 : FLY_DURATION_S}
           once
         />
+        {children}
       </Viewer>
       <button
         type="button"
