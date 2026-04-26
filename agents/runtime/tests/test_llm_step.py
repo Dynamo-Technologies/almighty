@@ -1,7 +1,9 @@
 """Tests for run_llm_role_step.
 
-Spec §6 — the helper that ties PyRapide-as-input to causal-predecessors-on-output.
-Mocks crewai.Crew + Task so we don't make real LLM calls in CI.
+Spec §6 — the helper that ties PyRapide-as-input to predecessors-on-output.
+The implementation does a direct OpenAI-compatible call to vLLM rather
+than going through CrewAI's agent loop (rationale documented in
+llm_step.py). Tests mock httpx.post so we don't actually hit a vLLM.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ def _make_ctx(dag: NamespacedDag) -> OfficerToolContext:
         scenario_id=uuid4(),
         turn=1,
         agent_entity_id=uuid4(),
-        capability_profile={"action_verbs_available": ["issue_order", "request_support"]},
+        capability_profile={"action_verbs_available": ["issue_order"]},
         kernel_dag=dag,
         validator=Validator(),
     )
@@ -44,95 +46,168 @@ def _seed(dag: NamespacedDag, ctx: OfficerToolContext, *, verb: str) -> KernelEv
     return e
 
 
-def test_run_llm_role_step_sets_predecessors_before_kickoff():
+def _mock_llm():
+    llm = MagicMock(name="llm")
+    llm.base_url = "http://stub:9000/v1"
+    llm.model = "stub-model"
+    llm.api_key = "EMPTY"
+    llm.temperature = 0.3
+    return llm
+
+
+def _mock_tool(name: str = "issue_order"):
+    """A stub tool that mirrors what OfficerToolBase exposes."""
+    tool = MagicMock(name=f"tool-{name}")
+    tool.name = name
+    tool.description = f"Stub for {name}"
+    tool.args_schema = None  # falls back to {"type":"object","properties":{}}
+    return tool
+
+
+def _mock_agent(tools):
+    agent = MagicMock(name="agent")
+    agent.tools = tools
+    agent.role = "S3"
+    agent.goal = "decide"
+    agent.backstory = "the operations officer"
+    return agent
+
+
+def _vllm_response_with_tool_call(*, name="issue_order", args=None):
+    """Minimal OpenAI-format response shape with a tool_call."""
+    import json as _json
+    return MagicMock(
+        status_code=200,
+        json=MagicMock(return_value={
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [{
+                        "id": "tc-1",
+                        "type": "function",
+                        "function": {
+                            "name": name,
+                            "arguments": _json.dumps(args or {"order_type": "MOVE"}),
+                        },
+                    }],
+                },
+                "finish_reason": "tool_calls",
+            }],
+        }),
+        raise_for_status=MagicMock(),
+    )
+
+
+def test_run_llm_role_step_sets_predecessors_before_tool_call_and_resets_after():
     dag = NamespacedDag()
     ctx = _make_ctx(dag)
     e1 = _seed(dag, ctx, verb="detect")
     e2 = _seed(dag, ctx, verb="classify")
 
-    fake_agent = MagicMock(name="agent")
-    fake_llm = MagicMock(name="llm")
-
     captured_predecessors: list[list] = []
+    tool = _mock_tool("issue_order")
 
-    with patch("almighty_agent_runtime.llm_step.Crew") as MockCrew, \
-         patch("almighty_agent_runtime.llm_step.Task"):
-        # Capture ctx.causal_predecessors at the moment kickoff is called
-        def kickoff_side_effect():
-            captured_predecessors.append(list(ctx.causal_predecessors))
-            return MagicMock(raw="(unused)")
-        MockCrew.return_value.kickoff = MagicMock(side_effect=kickoff_side_effect)
+    def tool_run(**kwargs):
+        captured_predecessors.append(list(ctx.causal_predecessors))
+        return {"event_id": "x", "verb": "issue_order"}
 
+    tool._run = MagicMock(side_effect=tool_run)
+    agent = _mock_agent([tool])
+    llm = _mock_llm()
+
+    with patch("almighty_agent_runtime.llm_step.httpx.post") as mock_post:
+        mock_post.return_value = _vllm_response_with_tool_call(name="issue_order")
         run_llm_role_step(
-            ctx=ctx,
-            agent=fake_agent,
-            llm=fake_llm,
+            ctx=ctx, agent=agent, llm=llm,
             task_description="Decide.",
-            expected_output="Tool calls.",
+            expected_output="Tool calls only.",
         )
 
+    # Predecessors visible to tool._run were exactly the seeded events.
     assert captured_predecessors == [[e1.event_id, e2.event_id]]
+    # And reset to empty afterward.
+    assert ctx.causal_predecessors == []
+    # The tool was called once with the LLM-supplied args.
+    tool._run.assert_called_once_with(order_type="MOVE")
 
 
-def test_run_llm_role_step_resets_predecessors_after():
-    """Defense-in-depth: leaving predecessors set across roles would link
-    later deterministic events to the wrong parents."""
+def test_run_llm_role_step_includes_situation_report_in_user_message():
     dag = NamespacedDag()
     ctx = _make_ctx(dag)
     _seed(dag, ctx, verb="detect")
-    fake_agent = MagicMock()
-    fake_llm = MagicMock()
 
-    with patch("almighty_agent_runtime.llm_step.Crew") as MockCrew, \
-         patch("almighty_agent_runtime.llm_step.Task"):
-        MockCrew.return_value.kickoff = MagicMock(return_value=MagicMock(raw="x"))
+    tool = _mock_tool("issue_order")
+    tool._run = MagicMock(return_value={"event_id": "x"})
+    agent = _mock_agent([tool])
+    llm = _mock_llm()
+
+    with patch("almighty_agent_runtime.llm_step.httpx.post") as mock_post:
+        mock_post.return_value = _vllm_response_with_tool_call()
         run_llm_role_step(
-            ctx=ctx, agent=fake_agent, llm=fake_llm,
-            task_description="x", expected_output="x",
+            ctx=ctx, agent=agent, llm=llm,
+            task_description="Decide what to do.",
+            expected_output="Tool calls only.",
         )
 
+    body = mock_post.call_args.kwargs["json"]
+    user_msg = next(m for m in body["messages"] if m["role"] == "user")
+    assert "Decide what to do." in user_msg["content"]
+    assert "detect" in user_msg["content"]
+    assert "Tool calls only." in user_msg["content"]
+
+
+def test_run_llm_role_step_handles_text_only_response():
+    """If Gemma replies with text (no tool_calls), the step doesn't error;
+    the caller's fallback will then handle the empty-event case."""
+    dag = NamespacedDag()
+    ctx = _make_ctx(dag)
+
+    tool = _mock_tool("issue_order")
+    tool._run = MagicMock()
+    agent = _mock_agent([tool])
+    llm = _mock_llm()
+
+    text_only = MagicMock(
+        status_code=200,
+        json=MagicMock(return_value={
+            "choices": [{
+                "message": {"role": "assistant", "content": "I won't call a tool."},
+                "finish_reason": "stop",
+            }],
+        }),
+        raise_for_status=MagicMock(),
+    )
+    with patch("almighty_agent_runtime.llm_step.httpx.post") as mock_post:
+        mock_post.return_value = text_only
+        run_llm_role_step(
+            ctx=ctx, agent=agent, llm=llm,
+            task_description="x", expected_output="y",
+        )
+
+    tool._run.assert_not_called()
     assert ctx.causal_predecessors == []
 
 
-def test_run_llm_role_step_attaches_llm_to_agent():
-    """The agent is constructed with llm=None (deterministic v1). The
-    helper must attach the supplied LLM to the agent before kickoff."""
-    dag = NamespacedDag()
-    ctx = _make_ctx(dag)
-    fake_agent = MagicMock(name="agent")
-    fake_llm = MagicMock(name="llm")
-
-    with patch("almighty_agent_runtime.llm_step.Crew") as MockCrew, \
-         patch("almighty_agent_runtime.llm_step.Task"):
-        MockCrew.return_value.kickoff = MagicMock(return_value=MagicMock(raw="x"))
-        run_llm_role_step(
-            ctx=ctx, agent=fake_agent, llm=fake_llm,
-            task_description="x", expected_output="x",
-        )
-
-    assert fake_agent.llm == fake_llm
-
-
-def test_run_llm_role_step_includes_situation_report_in_task_description():
+def test_run_llm_role_step_resets_predecessors_on_exception():
+    """If httpx raises (e.g., timeout), ctx.causal_predecessors must still
+    be reset so the next deterministic step doesn't link to the wrong parents."""
     dag = NamespacedDag()
     ctx = _make_ctx(dag)
     _seed(dag, ctx, verb="detect")
 
-    fake_agent = MagicMock()
-    fake_llm = MagicMock()
-    captured_descriptions = []
+    agent = _mock_agent([_mock_tool("issue_order")])
+    llm = _mock_llm()
 
-    with patch("almighty_agent_runtime.llm_step.Crew") as MockCrew, \
-         patch("almighty_agent_runtime.llm_step.Task") as MockTask:
-        MockTask.side_effect = lambda **kwargs: captured_descriptions.append(kwargs["description"]) or MagicMock()
-        MockCrew.return_value.kickoff = MagicMock(return_value=MagicMock(raw="x"))
-        run_llm_role_step(
-            ctx=ctx, agent=fake_agent, llm=fake_llm,
-            task_description="Decide what to do.",
-            expected_output="x",
-        )
+    with patch("almighty_agent_runtime.llm_step.httpx.post") as mock_post:
+        mock_post.side_effect = httpx_TimeoutError = RuntimeError("simulated timeout")
+        try:
+            run_llm_role_step(
+                ctx=ctx, agent=agent, llm=llm,
+                task_description="x", expected_output="y",
+            )
+        except RuntimeError:
+            pass
 
-    assert len(captured_descriptions) == 1
-    assert "Decide what to do." in captured_descriptions[0]
-    # Situation report is embedded
-    assert "detect" in captured_descriptions[0]
+    assert ctx.causal_predecessors == []
