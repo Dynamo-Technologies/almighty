@@ -145,6 +145,7 @@ class OfficerToolBase(BaseTool):
             "event_id": str(event.event_id),
             "verb": self.VERB,
             "officer_type": self.OFFICER_TYPE,
+            "source_entity_id": str(event.source_entity_id),
             "validator": validator_outcome,
             "causal_predecessors": [str(p) for p in event.causal_predecessors],
         }

@@ -42,6 +42,7 @@ beforeAll(async () => {
       PORT: 4000,
       HOST: "127.0.0.1",
       LOG_LEVEL: "error",
+      SPARK_WORKER_URL: "http://localhost:0",
     },
     pool,
   }));

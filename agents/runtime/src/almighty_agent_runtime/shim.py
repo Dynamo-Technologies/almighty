@@ -88,6 +88,7 @@ def _events_from_result(result: Any, *, side: str, req: RunTurnRequest) -> list[
             "event_id": step.get("event_id"),
             "verb": step.get("verb"),
             "officer_type": step.get("officer_type"),
+            "source_entity_id": step.get("source_entity_id"),
             "validator": step.get("validator"),
             "tenant_id": req.tenant_id,
             "scenario_id": req.scenario_id,

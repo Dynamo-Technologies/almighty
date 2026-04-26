@@ -278,6 +278,7 @@ def _step_s3_llm_decide(roles: dict[str, _RoleBinding]) -> list[dict[str, Any]]:
                 "event_id": r.get("event_id"),
                 "verb": r.get("verb"),
                 "officer_type": r.get("officer_type"),
+                "source_entity_id": r.get("source_entity_id"),
                 "validator": r.get("validator"),
                 "causal_predecessors": r.get("causal_predecessors", []),
                 "llm_driven": True,

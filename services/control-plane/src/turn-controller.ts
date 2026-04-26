@@ -100,12 +100,16 @@ export async function advanceTurn(
     );
     await client.query("COMMIT");
 
-    // ---- Step 2: between-turn agents (stubbed) ----
-    const agentResult = await runBetweenTurnAgents({
-      tenantId,
-      scenarioId,
-      turn: closedTurn,
-    });
+    // ---- Step 2: between-turn agents (real call to spark worker) ----
+    // The runner POSTs to the FastAPI shim on spark-763d over Tailscale,
+    // gets back the events with causal_predecessors set by the LLM-driven
+    // roles, and writes them straight into the events table. Pool is
+    // passed so the runner can use the same connection pool — single
+    // connection cycle per turn, simpler error semantics.
+    const agentResult = await runBetweenTurnAgents(
+      { tenantId, scenarioId, turn: closedTurn },
+      pool,
+    );
 
     // ---- Step 3: apply overrides (WS-303) ----
     await applyOverrides(pool, { tenantId, scenarioId, turn: closedTurn });
