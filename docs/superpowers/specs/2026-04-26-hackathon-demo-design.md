@@ -42,15 +42,15 @@ in the AAR. (The spec ships a fallback; see §9.)
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │   Presenter laptop (on Dynamo tailnet)                                       │
-│   Browser → https://almighty-demo.dynamo.works/excon (single page)           │
+│   Browser → https://almightyengine.com/excon (single page)           │
 └────────┬─────────────────────────────────────────────────────────────────────┘
          │ HTTPS over Tailscale (DNS resolves publicly via Route 53;             
          │  only tailnet members can route to the 100.x.y.z target)              
          ▼                                                                       
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│   AWS Route 53 — public hosted zone dynamo.works                              │
-│     A record  almighty-demo.dynamo.works  →  EC2 Tailscale IP (100.x.y.z)     │
-│   IAM (small policy on the dynamo.works zone, used by Caddy DNS-01 only)      │
+│   AWS Route 53 — public hosted zone almightyengine.com                              │
+│     A record  almightyengine.com  →  EC2 Tailscale IP (100.x.y.z)     │
+│   IAM (small policy on the almightyengine.com zone, used by Caddy DNS-01 only)      │
 └────┬─────────────────────────────────────────────────────────────────────────┘
      │
      ▼
@@ -105,8 +105,8 @@ in the AAR. (The spec ships a fallback; see §9.)
 | EXCON console                            | EC2 (web build)      | Existing                    | Single visible action: "Advance turn 1" button                                                                 |
 | Supabase project                         | Cloud                | **New**                     | Postgres for the demo tenant. Schemas imported from `services/control-plane/src/db/`                            |
 | Tailscale on EC2                         | EC2                  | **New (cloud-init)**        | EC2 joins Dynamo tailnet via ephemeral auth key. Outbound to spark IPs. Ingress via tailnet only                |
-| Route 53 A record                         | AWS                  | **New**                     | `almighty-demo.dynamo.works` → EC2 Tailscale IP. Public DNS, private routing                                     |
-| IAM (Route 53 DNS-01)                     | AWS                  | **New**                     | Tiny scoped policy: `route53:ListHostedZones` + `route53:ChangeResourceRecordSets` + `route53:GetChange` on dynamo.works. Used by Caddy only                                                      |
+| Route 53 A record                         | AWS                  | **New**                     | `almightyengine.com` → EC2 Tailscale IP. Public DNS, private routing                                     |
+| IAM (Route 53 DNS-01)                     | AWS                  | **New**                     | Tiny scoped policy: `route53:ListHostedZones` + `route53:ChangeResourceRecordSets` + `route53:GetChange` on almightyengine.com. Used by Caddy only                                                      |
 | Caddy (TLS termination + reverse proxy)   | EC2                  | **New (replaces nginx)**    | Caddy w/ `caddy-dns/route53` plugin. Auto Let's Encrypt via DNS-01 (no public 80/443 needed). Reverse-proxies internal services on the tailnet IP only                                  |
 | nvidia-smi side terminals                | Both Sparks          | **New (operator-run)**      | Two SSH terminals, `nvidia-smi dmon -s u`, projected next to browser. Pure visual stage element                  |
 
@@ -248,10 +248,10 @@ not the spec.
 
 1. **AWS + Tailscale + Supabase + Route 53 plumbing.** EC2 up, joined
    to tailnet, Supabase project created, schemas imported, Caddy
-   issuing a real Let's Encrypt cert for `almighty-demo.dynamo.works`
+   issuing a real Let's Encrypt cert for `almightyengine.com`
    via Route 53 DNS-01, A record live, control-plane reachable from
    the presenter laptop browser. Validation: `curl -v
-   https://almighty-demo.dynamo.works/healthz` from the laptop returns
+   https://almightyengine.com/healthz` from the laptop returns
    200 with a green padlock; `tailscale ping spark-763d` from EC2;
    `psql` from EC2 to Supabase.
 2. **Spark worker shim.** FastAPI in `agents/runtime/`, dockerized into
@@ -324,8 +324,8 @@ up: `curl http://100.106.123.5:8001/v1/models`.
 
 ### 11b. Route 53 hosted zone check
 
-Confirm `dynamo.works` is a public hosted zone in the AWS account
-(`aws route53 list-hosted-zones | grep dynamo.works`). The A record
+Confirm `almightyengine.com` is a public hosted zone in the AWS account
+(`aws route53 list-hosted-zones | grep almightyengine.com`). The A record
 will be created automatically by the Caddy DNS-01 issuer or via
 Terraform/aws-cli in step 1 of the build order. No manual A record
 needs to be pre-created — but the zone must exist.
@@ -333,7 +333,7 @@ needs to be pre-created — but the zone must exist.
 ### 11c. IAM for Caddy DNS-01
 
 Create a small IAM user (or instance role attached to EC2) with this
-policy. Scope to the dynamo.works hosted zone ID, not `*`:
+policy. Scope to the almightyengine.com hosted zone ID, not `*`:
 
 ```json
 {
@@ -395,13 +395,13 @@ docker compose up -d
 TS_IP=$(cat /etc/almighty/tailscale-ip)
 ZONE_ID=<DYNAMO_WORKS_ZONE_ID>
 aws route53 change-resource-record-sets --hosted-zone-id $ZONE_ID \
-  --change-batch "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"almighty-demo.dynamo.works\",\"Type\":\"A\",\"TTL\":60,\"ResourceRecords\":[{\"Value\":\"$TS_IP\"}]}}]}"
+  --change-batch "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"almightyengine.com\",\"Type\":\"A\",\"TTL\":60,\"ResourceRecords\":[{\"Value\":\"$TS_IP\"}]}}]}"
 ```
 
 After cloud-init finishes (~3-5 min), Caddy boots, requests its
 Let's Encrypt cert via DNS-01 (the IAM creds let it write the
-`_acme-challenge.almighty-demo.dynamo.works` TXT record), and serves
-the React app on `https://almighty-demo.dynamo.works`. Reachable only
+`_acme-challenge.almightyengine.com` TXT record), and serves
+the React app on `https://almightyengine.com`. Reachable only
 from devices on the tailnet because the A record points at a 100.x.y.z
 address with no public route.
 
@@ -411,14 +411,14 @@ Once cloud-init reports done:
 
 ```bash
 # DNS resolves publicly
-dig +short almighty-demo.dynamo.works
+dig +short almightyengine.com
 # Expect: a 100.x.y.z address
 
 # Without tailscale up, this hangs — that's the point
-nc -z -w 2 almighty-demo.dynamo.works 443; echo $?
+nc -z -w 2 almightyengine.com 443; echo $?
 
 # With tailscale up, this returns 200
-curl -v https://almighty-demo.dynamo.works/healthz
+curl -v https://almightyengine.com/healthz
 # Expect: green cert chain, 200 OK
 ```
 

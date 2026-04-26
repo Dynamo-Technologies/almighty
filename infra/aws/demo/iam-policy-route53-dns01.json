@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListZonesAndChanges",
+      "Effect": "Allow",
+      "Action": ["route53:ListHostedZones", "route53:GetChange"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ChangeRecords",
+      "Effect": "Allow",
+      "Action": "route53:ChangeResourceRecordSets",
+      "Resource": "arn:aws:route53:::hostedzone/ALMIGHTYENGINE_ZONE_ID_PLACEHOLDER"
+    }
+  ]
+}

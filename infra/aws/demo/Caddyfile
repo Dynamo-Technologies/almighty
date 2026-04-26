@@ -1,19 +1,13 @@
 {
-    email demo-ops@dynamo.works
+    email demo-ops@almightyengine.com
 }
 
-almighty-demo.dynamo.works {
+almightyengine.com {
     tls {
         dns route53 {
-            # Cross-account: dynamo.works is in account 639623969283; the
-            # EC2 instance is elsewhere. We pass explicit STS creds for a
-            # one-shot DNS-01 cert acquisition. After the cert is issued
-            # and stored on disk, these creds aren't used again — cert is
-            # valid 90 days. Renewal is out of scope for this demo.
-            access_key_id {env.ROUTE53_AWS_ACCESS_KEY_ID}
-            secret_access_key {env.ROUTE53_AWS_SECRET_ACCESS_KEY}
-            token {env.ROUTE53_AWS_SESSION_TOKEN}
-            region us-east-1
+            region {env.AWS_REGION}
+            # Caddy picks up creds from the EC2 instance role automatically;
+            # no access_key_id / secret_access_key needed.
         }
     }
 

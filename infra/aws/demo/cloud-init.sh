@@ -48,12 +48,6 @@ SUPABASE_DATABASE_URL=__SUPABASE_DATABASE_URL__
 JWT_PUBLIC_KEY=__JWT_PUBLIC_KEY__
 AWS_REGION=__AWS_REGION__
 TAILSCALE_IP=$TS_IP
-# Route 53 cross-account creds for Caddy's one-shot DNS-01 cert.
-# These are temporary STS creds; once Caddy has the cert (90-day validity),
-# they're no longer needed. Renewal is out of scope for the demo.
-ROUTE53_AWS_ACCESS_KEY_ID=__ROUTE53_AWS_ACCESS_KEY_ID__
-ROUTE53_AWS_SECRET_ACCESS_KEY=__ROUTE53_AWS_SECRET_ACCESS_KEY__
-ROUTE53_AWS_SESSION_TOKEN=__ROUTE53_AWS_SESSION_TOKEN__
 EOF
 chmod 600 .env
 
@@ -64,5 +58,5 @@ echo "------------------------------------------------------------------"
 echo "almighty-demo cloud-init complete at $(date -Is)"
 echo "Tailscale IP: $TS_IP"
 echo "Manual next step: create Route 53 A record"
-echo "  almighty-demo.dynamo.works  →  $TS_IP"
+echo "  almightyengine.com  →  $TS_IP"
 echo "------------------------------------------------------------------"

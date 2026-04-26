@@ -14,11 +14,9 @@ services:
       - caddy-config:/config
     environment:
       AWS_REGION: ${AWS_REGION}
-      # Route 53 creds for DNS-01 cert acquisition. Used once at boot;
-      # cert lasts 90 days and renewal is out of scope for the demo.
-      ROUTE53_AWS_ACCESS_KEY_ID: ${ROUTE53_AWS_ACCESS_KEY_ID}
-      ROUTE53_AWS_SECRET_ACCESS_KEY: ${ROUTE53_AWS_SECRET_ACCESS_KEY}
-      ROUTE53_AWS_SESSION_TOKEN: ${ROUTE53_AWS_SESSION_TOKEN}
+      # Caddy reads AWS creds from the EC2 instance metadata service
+      # automatically — the instance role has route53:ChangeResourceRecordSets
+      # on the almightyengine.com hosted zone (same AWS account).
     depends_on: [control-plane, websocket]
 
   control-plane:
