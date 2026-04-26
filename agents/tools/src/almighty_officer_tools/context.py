@@ -10,7 +10,7 @@ for when they instantiate per-agent tool sets.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
@@ -47,3 +47,9 @@ class OfficerToolContext:
     capability_profile: dict[str, Any]
     kernel_dag: NamespacedDag
     validator: Validator
+    # The role's prepare-step (e.g., run_llm_role_step in the agent runtime)
+    # populates this with event ids the LLM saw in its situation report;
+    # OfficerToolBase._run reads it on commit so the new event chains back
+    # to those parents. Spec §6b. Empty list (default) preserves the
+    # existing v1 deterministic behavior.
+    causal_predecessors: list[UUID] = field(default_factory=list)

@@ -5,6 +5,7 @@ import { Index } from "./routes/Index";
 import { ExconConsole } from "./routes/ExconConsole";
 import { WhiteCellConsole } from "./routes/WhiteCellConsole";
 import { AarReplay } from "./routes/AarReplay";
+import { Demo } from "./routes/Demo";
 
 export const router = createBrowserRouter([
   {
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
       {
         path: ":tenantId/scenarios/:scenarioId/aar",
         element: <AarReplay />,
+      },
+      {
+        path: ":tenantId/scenarios/:scenarioId/demo",
+        element: <Demo />,
       },
       { path: "*", element: <Navigate to="/" replace /> },
     ],

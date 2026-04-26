@@ -124,6 +124,10 @@ class OfficerToolBase(BaseTool):
             validator_outcome = "skipped"
 
         # Step 3: commit the event through the namespaced DAG.
+        # `causal_predecessors` come from the context — the LLM-driven role
+        # step in agents/runtime sets them before kickoff so this commit
+        # chains back to the events the LLM saw. Empty list (default) for
+        # purely-deterministic roles preserves the v1 behavior. Spec §6b.
         event = KernelEvent(
             event_id=uuid4(),
             tenant_id=ctx.tenant_id,
@@ -133,7 +137,7 @@ class OfficerToolBase(BaseTool):
             source_entity_id=ctx.agent_entity_id,
             action_verb=self.VERB,
             payload=self._build_event_payload(args),
-            causal_predecessors=[],
+            causal_predecessors=list(ctx.causal_predecessors),
         )
         ctx.kernel_dag.commit(event)
 
@@ -141,5 +145,7 @@ class OfficerToolBase(BaseTool):
             "event_id": str(event.event_id),
             "verb": self.VERB,
             "officer_type": self.OFFICER_TYPE,
+            "source_entity_id": str(event.source_entity_id),
             "validator": validator_outcome,
+            "causal_predecessors": [str(p) for p in event.causal_predecessors],
         }

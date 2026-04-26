@@ -1,0 +1,31 @@
+{
+    email demo-ops@almightyengine.com
+}
+
+app.almightyengine.com {
+    tls {
+        dns route53 {
+            region {env.AWS_REGION}
+            # Caddy picks up creds from the EC2 instance role automatically;
+            # no access_key_id / secret_access_key needed.
+        }
+    }
+
+    handle_path /api/* {
+        reverse_proxy control-plane:4000
+    }
+    handle_path /ws* {
+        reverse_proxy websocket:4001
+    }
+
+    handle {
+        root * /srv/web
+        try_files {path} /index.html
+        file_server
+    }
+
+    log {
+        output stdout
+        format console
+    }
+}

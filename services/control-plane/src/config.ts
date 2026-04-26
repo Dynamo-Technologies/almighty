@@ -6,6 +6,9 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   HOST: z.string().default("0.0.0.0"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  // Spark worker (FastAPI shim) endpoint reachable over Tailscale.
+  // Default points at spark-763d.
+  SPARK_WORKER_URL: z.string().url().default("http://100.106.123.5:7000"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

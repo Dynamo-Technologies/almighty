@@ -38,9 +38,10 @@ export interface AarEnvelope {
 
 const CONTROL_PLANE_BASE = (() => {
   if (typeof window === "undefined") return "http://localhost:4000";
-  // Vite proxies aren't configured; for v1 the operator points the renderer at
-  // a known control-plane URL via env. Default localhost for dev.
-  return import.meta.env?.VITE_CONTROL_PLANE_URL ?? "http://localhost:4000";
+  // Default: Caddy proxies /api/* to the control-plane container. Override
+  // with VITE_CONTROL_PLANE_URL at build time when running locally without
+  // a Caddy reverse-proxy (e.g., point at http://localhost:4000).
+  return import.meta.env?.VITE_CONTROL_PLANE_URL ?? "/api";
 })();
 
 export async function fetchEvents(
