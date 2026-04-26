@@ -57,10 +57,13 @@ docker run -d --name "$CONTAINER" \
   "$IMAGE" \
   -c "
     set -e
-    pip install --no-cache-dir --quiet \
+    # Use \`python3 -m pip\` rather than \`pip\` — the
+    # crewai:stig-hardened-boto3 image is on UBI9 Python 3.12 which only
+    # symlinks pip3/pip3.12, not bare pip.
+    python3 -m pip install --no-cache-dir --quiet \
       fastapi 'uvicorn[standard]' httpx pyrapide pydantic
     cd /app/almighty
-    exec uvicorn almighty_agent_runtime.shim:app --host 0.0.0.0 --port $PORT --log-level info
+    exec python3 -m uvicorn almighty_agent_runtime.shim:app --host 0.0.0.0 --port $PORT --log-level info
   "
 
 # Wait up to 90s for /healthz.
