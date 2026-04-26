@@ -35,8 +35,6 @@ export function CesiumScene({ children }: CesiumSceneProps) {
     <>
       <Viewer
         full
-        timeline={false}
-        animation={false}
         baseLayerPicker={false}
         geocoder={false}
         homeButton={false}
