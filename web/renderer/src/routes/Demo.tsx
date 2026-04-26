@@ -32,7 +32,10 @@ const DEMO_CZML_URL = "/czml/nashville-vignette.czml";
 
 const CONTROL_PLANE_BASE = (() => {
   if (typeof window === "undefined") return "http://localhost:4000";
-  return import.meta.env?.VITE_CONTROL_PLANE_URL ?? "";
+  // Caddy reverse-proxies /api/* to the control-plane container; the
+  // SPA routes live at the root, so without /api/ here a POST to
+  // /tenants/.../turns/advance hits Caddy's static handler and 405s.
+  return import.meta.env?.VITE_CONTROL_PLANE_URL ?? "/api";
 })();
 
 export function Demo() {
