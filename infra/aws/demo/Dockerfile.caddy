@@ -1,6 +1,8 @@
-FROM caddy:2.8-builder AS builder
+# caddy-dns/route53 v1.6+ requires Go 1.25; older 2.8 builder ships Go 1.23.
+# `caddy:2-builder` tracks the latest 2.x and has a current Go.
+FROM caddy:2-builder AS builder
 RUN xcaddy build \
     --with github.com/caddy-dns/route53
 
-FROM caddy:2.8-alpine
+FROM caddy:2-alpine
 COPY --from=builder /usr/bin/caddy /usr/bin/caddy

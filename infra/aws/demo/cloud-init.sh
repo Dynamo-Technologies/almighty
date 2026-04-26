@@ -22,10 +22,14 @@ mkdir -p /etc/almighty
 TS_IP=$(tailscale ip -4 | head -1)
 echo "$TS_IP" > /etc/almighty/tailscale-ip
 
-# 2. Docker + compose plugin + git + aws CLI --------------------------------
+# 2. Docker + compose v2 + git ----------------------------------------------
+# docker-compose-plugin is in Docker CE's apt repo, not Ubuntu's default;
+# docker-compose-v2 in noble universe provides the `docker compose` CLI
+# plugin and is sufficient for our needs. awscli is no longer needed (we
+# don't talk to AWS from EC2 — Caddy reads creds from instance metadata).
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  docker.io docker-compose-plugin git awscli rsync curl
+  docker.io docker-compose-v2 git rsync curl
 
 systemctl enable --now docker
 
@@ -35,8 +39,11 @@ cd /opt/almighty
 test -n "${ALMIGHTY_BRANCH:-__ALMIGHTY_BRANCH__}" && git checkout "__ALMIGHTY_BRANCH__"
 
 # 4. Build the web bundle on this box ---------------------------------------
-docker run --rm -v /opt/almighty/web/renderer:/app -w /app node:20-bookworm-slim \
-  sh -c "npm ci && npm run build"
+# Mount the whole repo (not just web/renderer) — vite-plugin-static-copy
+# pulls ../../czml/demos/*.czml during the build. Project uses pnpm via
+# corepack (ships with node:20+); CI=true skips pnpm's no-TTY confirm.
+docker run --rm -e CI=true -v /opt/almighty:/repo -w /repo/web/renderer node:20-bookworm-slim \
+  sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm run build"
 
 # 5. Build the caddy image (with route53 dns-01 plugin) ---------------------
 cd /opt/almighty/infra/aws/demo

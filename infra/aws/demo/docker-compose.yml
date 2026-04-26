@@ -25,7 +25,9 @@ services:
     working_dir: /app
     volumes:
       - ../../../services/control-plane:/app
-    command: ["sh", "-c", "npm ci && npm run build && node dist/server.js"]
+    # Project uses pnpm, not npm. corepack ships with node:20+; CI=true
+    # tells pnpm to skip the no-TTY confirm prompt.
+    command: ["sh", "-c", "corepack enable && CI=true pnpm install --frozen-lockfile && pnpm run build && node dist/server.js"]
     environment:
       DATABASE_URL: ${SUPABASE_DATABASE_URL}
       PORT: "4000"
@@ -39,7 +41,7 @@ services:
     working_dir: /app
     volumes:
       - ../../../services/websocket:/app
-    command: ["sh", "-c", "npm ci && npm run build && node dist/server.js"]
+    command: ["sh", "-c", "corepack enable && CI=true pnpm install --frozen-lockfile && pnpm run build && node dist/server.js"]
     environment:
       DATABASE_URL: ${SUPABASE_DATABASE_URL}
       PORT: "4001"
