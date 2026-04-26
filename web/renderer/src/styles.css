@@ -919,14 +919,15 @@ body,
 
 .excon-demo {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
-  height: 100vh;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
   background: #0a0a0a;
   color: #ddd;
   font-family: ui-sans-serif, system-ui, sans-serif;
+  min-height: 0;
 }
 .excon-demo--locked {
-  grid-template-rows: auto 1fr;
+  grid-template-rows: 1fr;
 }
 .excon-demo__locked-card {
   margin: 60px auto;
@@ -962,6 +963,11 @@ body,
   background: #000;
   position: relative;
   min-height: 0;
+  min-width: 0;
+}
+.excon-demo__map > * {
+  position: absolute;
+  inset: 0;
 }
 .excon-demo__events {
   background: #0e0e0e;
