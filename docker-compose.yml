@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: almighty-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: almighty
+      POSTGRES_PASSWORD: almighty
+      POSTGRES_DB: almighty
+    ports:
+      - "5432:5432"
+    volumes:
+      - almighty-pgdata:/var/lib/postgresql/data
+      - ./services/control-plane/sql/init-test-db.sql:/docker-entrypoint-initdb.d/01-init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U almighty -d almighty"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  almighty-pgdata:
