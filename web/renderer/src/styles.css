@@ -915,6 +915,36 @@ body,
   font-family: ui-monospace, "SF Mono", monospace;
 }
 
+.event-log__causal {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin-left: 8px;
+  font-size: 10px;
+  color: #777;
+}
+.event-log__causal-arrow {
+  font-style: italic;
+}
+.event-log__causal-chip {
+  background: rgba(127, 127, 127, 0.12);
+  border: 1px solid rgba(127, 127, 127, 0.3);
+  border-radius: 3px;
+  padding: 1px 6px;
+  cursor: pointer;
+  font: inherit;
+  color: #c0dd97;
+}
+.event-log__causal-chip:hover {
+  background: rgba(192, 221, 151, 0.25);
+  border-color: rgba(192, 221, 151, 0.6);
+}
+.event-log__row--flash {
+  background: rgba(192, 221, 151, 0.4) !important;
+  transition: background 1s ease-out;
+}
+
 .playback-controls {
   display: flex;
   flex-wrap: wrap;
