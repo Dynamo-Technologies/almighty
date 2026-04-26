@@ -123,6 +123,10 @@ export function Demo() {
             authorization: `Bearer ${token}`,
             "content-type": "application/json",
           },
+          // Fastify's strict JSON parser rejects empty body when
+          // Content-Type is application/json. The endpoint takes no
+          // params, so we send a noop {}.
+          body: "{}",
         },
       );
       if (!res.ok) {
