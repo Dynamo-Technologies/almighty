@@ -19,6 +19,9 @@ export function Index() {
         <li>
           <Link to="/demo/scenarios/demo/white-cell">demo / demo — white cell control</Link>
         </li>
+        <li>
+          <Link to="/demo/scenarios/demo/aar">demo / demo — after-action review</Link>
+        </li>
       </ul>
       <p className="index__hint">
         Operator consoles require a JWT with the matching <code>cell_role</code>.
