@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { JulianDate, type Viewer as CesiumViewer } from "cesium";
+import { type Viewer as CesiumViewer } from "cesium";
 
 import { CesiumScene } from "../components/CesiumScene";
 import { CzmlLoader } from "../components/CzmlLoader";
@@ -68,33 +68,12 @@ export function Demo() {
   const [pollUntil, setPollUntil] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
 
-  // Park the Cesium clock at a moment inside the static Nashville vignette's
-  // availability window where most spatial effects overlap — ~00:05Z is
-  // when the radar fan, indirect-fire ellipse, masint cell, satellite
-  // swath and UAS corridor are all visible.
-  //
-  // CzmlDataSource loads ~1s after the viewer mounts and resets the clock
-  // to its document packet's currentTime (00:00:00Z, start of interval).
-  // Run a short interval that re-parks the clock at 00:05Z for the first
-  // ~6s after mount so we win the race regardless of CZML load timing.
-  const onViewerReady = useCallback((v: CesiumViewer) => {
-    setViewer(v);
-    const start = JulianDate.fromIso8601("2026-04-25T00:00:00Z");
-    const stop = JulianDate.fromIso8601("2026-04-25T00:10:00Z");
-    const sweetSpot = JulianDate.fromIso8601("2026-04-25T00:05:00Z");
-
-    const park = () => {
-      v.clock.startTime = start.clone();
-      v.clock.stopTime = stop.clone();
-      v.clock.currentTime = sweetSpot.clone();
-      v.clock.shouldAnimate = false;
-      if (v.timeline) v.timeline.zoomTo(v.clock.startTime, v.clock.stopTime);
-    };
-
-    park();
-    const handle = window.setInterval(park, 250);
-    window.setTimeout(() => window.clearInterval(handle), 6000);
-  }, []);
+  // Match the AarReplay route's behavior: don't touch the clock here, let
+  // CzmlDataSource set it up from the document packet's clock { interval,
+  // currentTime, multiplier, range }. The Nashville vignette starts at
+  // 00:00:00Z + multiplier=30 + LOOP_STOP, so the effects sweep through
+  // their availability windows over ~20 real seconds.
+  const onViewerReady = useCallback((v: CesiumViewer) => setViewer(v), []);
 
   // Poll /events while we're advancing AND for ~10s after the response
   // returns, so late writes drip in.
