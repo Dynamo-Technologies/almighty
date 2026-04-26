@@ -965,7 +965,13 @@ body,
   min-height: 0;
   min-width: 0;
 }
-.excon-demo__map > * {
+/* Stretch only the Cesium viewer to fill the map cell — NOT the
+   recenter button (which CesiumScene renders as a sibling and which
+   has its own positioning rules). Stretching the button would create
+   an invisible click-eater across the entire map. */
+.excon-demo__map > .cesium-viewer,
+.excon-demo__map > .cesium-widget,
+.excon-demo__map > div:not(.recenter-btn) {
   position: absolute;
   inset: 0;
 }
