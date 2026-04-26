@@ -729,3 +729,65 @@ body,
   gap: 6px;
   flex-wrap: wrap;
 }
+
+/* ---------------- Dev token form ---------------- */
+
+.dev-token-form {
+  margin-top: 32px;
+  padding: 16px 20px;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 4px;
+  max-width: 540px;
+}
+
+.dev-token-form h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #999;
+}
+
+.dev-token-form__hint {
+  font-size: 12px;
+  color: #888;
+  margin: 0 0 16px;
+}
+
+.dev-token-form__row {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
+
+.dev-token-form__row select,
+.dev-token-form__row input {
+  background: #181818;
+  color: #eaeaea;
+  border: 1px solid #333;
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dev-token-form__buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dev-token-form__preview {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #888;
+  font-family: ui-monospace, "SF Mono", monospace;
+  word-break: break-all;
+}

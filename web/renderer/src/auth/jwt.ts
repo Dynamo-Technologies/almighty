@@ -16,6 +16,7 @@ export interface JwtClaims {
 }
 
 const STORAGE_KEY = "almighty.jwt";
+const CELL_ROLES: readonly CellRole[] = ["white", "blue", "red", "observer"];
 
 function base64UrlDecode(input: string): string {
   const padded = input.padEnd(input.length + ((4 - (input.length % 4)) % 4), "=");
@@ -23,58 +24,72 @@ function base64UrlDecode(input: string): string {
   return atob(std);
 }
 
+function base64UrlEncode(s: string): string {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 export function decodeJwt(token: string): JwtClaims | null {
   try {
-    const [, payloadB64] = token.split(".");
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const payloadB64 = parts[1];
     if (!payloadB64) return null;
     const payload = JSON.parse(base64UrlDecode(payloadB64)) as Partial<JwtClaims>;
     if (typeof payload.tenant_id !== "string") return null;
-    if (
-      payload.cell_role !== "white" &&
-      payload.cell_role !== "blue" &&
-      payload.cell_role !== "red" &&
-      payload.cell_role !== "observer"
-    ) {
-      return null;
-    }
+    if (!CELL_ROLES.includes(payload.cell_role as CellRole)) return null;
     return payload as JwtClaims;
   } catch {
     return null;
   }
 }
 
-// Resolves a token from (in priority order): ?jwt= query param (also persists
-// to localStorage), then localStorage. The query-param flow is a hackathon
-// convenience for demos; real auth lands in a future ticket.
-function resolveToken(): string | null {
-  if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.search);
-  const fromQuery = params.get("jwt");
-  if (fromQuery) {
-    window.localStorage.setItem(STORAGE_KEY, fromQuery);
-    return fromQuery;
-  }
-  return window.localStorage.getItem(STORAGE_KEY);
+/**
+ * Mints an unsigned (`alg: "none"`) JWT for client-side dev use. The server
+ * will reject these — they're only good for the renderer's own route gating
+ * until a real auth flow lands.
+ */
+export function mintDevJwt(claims: JwtClaims): string {
+  const header = base64UrlEncode(JSON.stringify({ alg: "none", typ: "JWT" }));
+  const payload = base64UrlEncode(JSON.stringify(claims));
+  return `${header}.${payload}.`;
 }
 
-export function useJwtClaims(): JwtClaims | null {
-  const [claims, setClaims] = useState<JwtClaims | null>(() => {
-    const tok = resolveToken();
-    return tok ? decodeJwt(tok) : null;
-  });
+export function setStoredToken(token: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEY, token);
+  window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: token }));
+}
 
-  useEffect(() => {
-    const onStorage = () => {
-      const tok = resolveToken();
-      setClaims(tok ? decodeJwt(tok) : null);
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  return claims;
+export function clearStoredToken(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new StorageEvent("storage", { key: STORAGE_KEY, newValue: null }));
 }
 
 export function getStoredToken(): string | null {
   return typeof window === "undefined" ? null : window.localStorage.getItem(STORAGE_KEY);
+}
+
+/**
+ * Reads the JWT from localStorage only. v1 deliberately removed the
+ * `?jwt=<token>` URL flow — that was a phishing-shaped vector (any link
+ * could silently overwrite the stored token with attacker claims). Use
+ * the DevTokenForm to set a token instead.
+ */
+export function useJwtClaims(): JwtClaims | null {
+  const [claims, setClaims] = useState<JwtClaims | null>(() => {
+    const tok = getStoredToken();
+    return tok ? decodeJwt(tok) : null;
+  });
+
+  useEffect(() => {
+    const refresh = () => {
+      const tok = getStoredToken();
+      setClaims(tok ? decodeJwt(tok) : null);
+    };
+    window.addEventListener("storage", refresh);
+    return () => window.removeEventListener("storage", refresh);
+  }, []);
+
+  return claims;
 }

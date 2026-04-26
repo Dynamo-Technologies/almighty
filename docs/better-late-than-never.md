@@ -466,6 +466,59 @@ Source: WS-101.
 
 ---
 
+## Renderer
+
+### `web/renderer/src/api/mock.ts` and `whiteCell.ts` are intentionally synthetic
+
+These two files exist to make the WS-504 (EXCON consoles) and WS-505
+(white-cell control surface) PRs reviewable + demoable *before* the
+upstream agent runtime (WS-402/403/404), live CZML adapter (WS-503), and
+some control-plane endpoints (turn snapshot fetch, profile editor)
+land. They contain:
+
+- Hardcoded fixture lists (5 BLUE entities, 4 RED entities, 2 seeded
+  override policies, 2 seeded review-queue items, 2 capability profiles).
+- Mutable module-level arrays (`POLICIES`, `PROFILES`, `PENDING`) that
+  survive across function calls within a page lifecycle.
+- A monotonic `NEXT_TURN++` counter for the Advance Turn stub.
+- `console.log("[WS-504/WS-505 stub] …")` entries on every action so the
+  demo loop is visible in DevTools.
+
+These are **deliberate hackathon artifacts**. The wire shapes match the
+real endpoints; integration is "delete the function body and replace
+with a `fetch()` call to control-plane." A code-review pass that flags
+mutable state, missing optimistic-UI rollback, magic-number turn
+counters, etc., is correct in the abstract but the right fix is
+**delete the file when wiring real APIs, not refactor it.**
+
+Don't write tests against these files; they're not the contract.
+
+Source: WS-504, WS-505 follow-up review pass.
+
+---
+
+### JWT in URL was a phishing vector — stripped in WS-505 follow-up
+
+Originally `useJwtClaims()` resolved the token from a `?jwt=<token>`
+query param (with localStorage fallback). Convenient for "paste this
+URL into the browser" demos. Bad shape: any link of the form
+`https://app/?jwt=<attacker-jwt>` would silently overwrite the
+victim's stored token with attacker-controlled claims (different
+tenant, escalated cell_role, etc.).
+
+The query-param flow was removed in the WS-505 follow-up. Tokens are
+now set via the `<DevTokenForm>` component mounted on the Index page
+and on the AccessDenied page — explicit user action, no URL-based
+side channel.
+
+If you're writing test instructions or docs that say "paste this URL,"
+update them to: "open `/`, fill the dev token form with the right
+cell_role, then navigate to the route."
+
+Source: WS-505 follow-up review pass.
+
+---
+
 ### Verify SVG banner artifacts before merging
 
 Diagram PRs should grep the SVG for the banner color and count the
