@@ -57,9 +57,13 @@ docker run -d --name "$CONTAINER" \
   "$IMAGE" \
   -c "
     set -e
-    # Use \`python3 -m pip\` rather than \`pip\` — the
-    # crewai:stig-hardened-boto3 image is on UBI9 Python 3.12 which only
-    # symlinks pip3/pip3.12, not bare pip.
+    # crewai:stig-hardened-boto3 is on registry.access.redhat.com/ubi9/
+    # python-312, an s2i-style image whose real Python 3.12 + pip live in
+    # /opt/app-root. \`--entrypoint bash\` bypasses the s2i shim that
+    # normally activates that env, so /usr/bin/python3 (UBI9 system 3.9,
+    # no pip) is what we'd hit by default. Prepend the app-root bin dir
+    # so python3 resolves to 3.12 with pip baked in.
+    export PATH=/opt/app-root/bin:\$PATH
     python3 -m pip install --no-cache-dir --quiet \
       fastapi 'uvicorn[standard]' httpx pyrapide pydantic
     cd /app/almighty
