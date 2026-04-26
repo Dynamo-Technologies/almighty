@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { DevTokenForm } from "../components/DevTokenForm";
 
 export function Index() {
   return (
@@ -21,8 +22,9 @@ export function Index() {
       </ul>
       <p className="index__hint">
         Operator consoles require a JWT with the matching <code>cell_role</code>.
-        Append <code>?jwt=&lt;token&gt;</code> to the URL to set one.
+        Set one below before navigating.
       </p>
+      <DevTokenForm />
     </div>
   );
 }
