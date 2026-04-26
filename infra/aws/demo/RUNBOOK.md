@@ -6,7 +6,7 @@
 
 `almightyengine.com` is registered in the same AWS account as the EC2 instance, so we can use the standard pattern: an EC2 instance role grants Caddy `route53:ChangeResourceRecordSets` permission, Caddy completes the DNS-01 challenge automatically, and Let's Encrypt issues a real cert. No cross-account IAM, no embedded credentials.
 
-The instance has no public ingress beyond UDP 41641 (Tailscale WireGuard). Audience laptops on the Dynamo tailnet hit `https://almightyengine.com` and Tailscale routes the traffic to the EC2's `100.x.y.z` address.
+The instance has no public ingress beyond UDP 41641 (Tailscale WireGuard). Audience laptops on the Dynamo tailnet hit `https://app.almightyengine.com` and Tailscale routes the traffic to the EC2's `100.x.y.z` address.
 
 ## Prerequisites — gather before starting
 
@@ -252,7 +252,7 @@ You're done when you see:
 almighty-demo cloud-init complete at 2026-04-26T...
 Tailscale IP: 100.x.y.z
 Manual next step: create Route 53 A record
-  almightyengine.com  →  100.x.y.z
+  app.almightyengine.com  →  100.x.y.z
 ```
 
 Capture the Tailscale IP:
@@ -266,12 +266,12 @@ echo "TS_IP=$TS_IP"
 
 ## Step 11 — Create the Route 53 A record
 
-You can use the AWS console (Route 53 → `almightyengine.com` → Create record, name blank for apex, type A, value the Tailscale IP, TTL 60), or the CLI:
+You can use the AWS console (Route 53 → `almightyengine.com` → Create record, name `app`, type A, value the Tailscale IP, TTL 60), or the CLI:
 
 ```bash
 aws route53 change-resource-record-sets \
   --hosted-zone-id "$ALMIGHTYENGINE_ZONE_ID" \
-  --change-batch "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"almightyengine.com\",\"Type\":\"A\",\"TTL\":60,\"ResourceRecords\":[{\"Value\":\"$TS_IP\"}]}}]}"
+  --change-batch "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"app.almightyengine.com\",\"Type\":\"A\",\"TTL\":60,\"ResourceRecords\":[{\"Value\":\"$TS_IP\"}]}}]}"
 ```
 
 ---
@@ -281,14 +281,14 @@ aws route53 change-resource-record-sets \
 DNS resolves publicly:
 
 ```bash
-dig +short almightyengine.com
+dig +short app.almightyengine.com
 # expect: 100.x.y.z (the Tailscale IP)
 ```
 
 With your laptop on the Dynamo tailnet, hit the URL:
 
 ```bash
-curl -v https://almightyengine.com/
+curl -v https://app.almightyengine.com/
 ```
 
 Expected: real Let's Encrypt cert chain, green padlock. Response may be a 502 if the upstream control-plane is still booting (or the placeholder DATABASE_URL is set) — that's fine, it proves Caddy + cert + Tailscale routing all work.

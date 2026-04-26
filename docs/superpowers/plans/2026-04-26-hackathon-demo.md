@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship the 3-minute one-click hackathon demo specified in `docs/superpowers/specs/2026-04-26-hackathon-demo-design.md` — AWS-hosted Almighty at `https://almightyengine.com`, blue + red S3 LLM-driven on the two NVIDIA Sparks via Tailscale, with PyRapide's causal DAG as both the agent's situation report (assist) and the audit trail (`causal_predecessors` populated on commit).
+**Goal:** Ship the 3-minute one-click hackathon demo specified in `docs/superpowers/specs/2026-04-26-hackathon-demo-design.md` — AWS-hosted Almighty at `https://app.almightyengine.com`, blue + red S3 LLM-driven on the two NVIDIA Sparks via Tailscale, with PyRapide's causal DAG as both the agent's situation report (assist) and the audit trail (`causal_predecessors` populated on commit).
 
 **Architecture:** Single EC2 (t3.medium, us-east-1) running Caddy + control-plane + websocket + czml-adapter behind Tailscale-only ingress with a real Let's Encrypt cert via Route 53 DNS-01. Supabase Postgres for the demo tenant. spark-763d's existing CrewAI container repurposed as a FastAPI worker (bind-mount almighty repo, override CMD to run uvicorn) that runs both crews; red S3's LLM call hops to spark-3fe3's vLLM over the Spark-to-Spark cable.
 
@@ -53,7 +53,7 @@
 The operator hands over these three values before the implementation work begins. They block Phase 1.
 
 - [ ] **Tailscale auth key** — generate per spec §11a, capture the `tskey-auth-...` string
-- [ ] **Route 53 hosted zone ID** for `almightyengine.com`:
+- [ ] **Route 53 hosted zone ID** for `app.almightyengine.com`:
       `aws route53 list-hosted-zones --query 'HostedZones[?Name==\`almightyengine.com.\`].Id' --output text`
 - [ ] **IAM approach choice** — instance role (recommended) or IAM user with keys. Plan assumes **instance role**; if user with keys, swap step 1.4
 
@@ -120,7 +120,7 @@ git commit -m "feat(infra): caddy image with route53 dns-01 plugin"
     email demo-ops@almightyengine.com
 }
 
-almightyengine.com {
+app.almightyengine.com {
     tls {
         dns route53 {
             region {env.AWS_REGION}
@@ -329,7 +329,7 @@ echo "------------------------------------------------------------------"
 echo "almighty-demo cloud-init complete at $(date -Is)"
 echo "Tailscale IP: $TS_IP"
 echo "Manual next step: create Route 53 A record"
-echo "  almightyengine.com  →  $TS_IP"
+echo "  app.almightyengine.com  →  $TS_IP"
 echo "------------------------------------------------------------------"
 ```
 
@@ -2434,10 +2434,10 @@ Wait ~5-7 minutes for cloud-init.
 
 ```bash
 # From laptop:
-dig +short almightyengine.com
+dig +short app.almightyengine.com
 # Expect: 100.x.y.z (the EC2 tailscale IP)
 
-curl -v https://almightyengine.com/healthz
+curl -v https://app.almightyengine.com/healthz
 # Expect: 200 OK, green padlock
 ```
 
@@ -2482,7 +2482,7 @@ Expected: `{"ok":true}`.
 
 - [ ] **Step 1: Set the JWT in the browser localStorage**
 
-Open `https://almightyengine.com/<tenant>/scenarios/<scenario>/excon?demo=1`. Go through the existing `DevTokenForm` to set the JWT (or open DevTools console and `localStorage.setItem("jwt", "<DEMO_JWT>")` directly).
+Open `https://app.almightyengine.com/<tenant>/scenarios/<scenario>/excon?demo=1`. Go through the existing `DevTokenForm` to set the JWT (or open DevTools console and `localStorage.setItem("jwt", "<DEMO_JWT>")` directly).
 
 - [ ] **Step 2: Click Advance turn 1**
 
@@ -2543,7 +2543,7 @@ curl -s http://127.0.0.1:8000/v1/chat/completions \
 ```
 
 - [ ] Re-seed Supabase to turn 0
-- [ ] Confirm `https://almightyengine.com/healthz` returns 200 from the presenter laptop
+- [ ] Confirm `https://app.almightyengine.com/healthz` returns 200 from the presenter laptop
 - [ ] Two `nvidia-smi dmon -s u` SSH terminals up, sized and positioned next to the browser
 - [ ] Power saver off, screensaver off, Wi-Fi tested with Ethernet backup ready
 - [ ] Recovery line memorized; recovery action (restart spark worker) practiced

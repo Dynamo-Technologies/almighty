@@ -2,7 +2,7 @@
     email demo-ops@almightyengine.com
 }
 
-almightyengine.com {
+app.almightyengine.com {
     tls {
         dns route53 {
             region {env.AWS_REGION}
