@@ -4,12 +4,22 @@ export function Index() {
   return (
     <div className="index">
       <h1>Almighty</h1>
-      <p>Pick a scenario to enter:</p>
+      <p>Pick a surface:</p>
       <ul>
         <li>
-          <Link to="/demo/scenarios/demo">demo / demo</Link>
+          <Link to="/demo/scenarios/demo">demo / demo (scenario root)</Link>
+        </li>
+        <li>
+          <Link to="/demo/scenarios/demo/excon/blue">demo / demo — EXCON blue</Link>
+        </li>
+        <li>
+          <Link to="/demo/scenarios/demo/excon/red">demo / demo — EXCON red</Link>
         </li>
       </ul>
+      <p className="index__hint">
+        EXCON consoles require a JWT with the matching <code>cell_role</code>.
+        Append <code>?jwt=&lt;token&gt;</code> to the URL to set one.
+      </p>
     </div>
   );
 }
