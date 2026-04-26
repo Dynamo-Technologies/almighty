@@ -19,26 +19,49 @@ from almighty_red_crew.crew import _build_script, run_red_crew
 from almighty_red_crew.doctrine import VALID_DOCTRINES
 
 
+# Per-doctrine event count in fallback mode (LLM-disabled in tests).
+# Peer / near-peer: red.s3.llm_decide is one script entry but its
+# fallback expands to two events (issue_order + request_support), so
+# events_committed is 10 for those doctrines despite 9 script entries.
+# Hybrid is unaffected (single s3.send_shadow → 1 event).
+_FALLBACK_EVENTS_PER_DOCTRINE = {
+    "peer": 10,
+    "near-peer": 10,
+    "hybrid": 9,
+}
+
+
 @pytest.mark.parametrize("doctrine", VALID_DOCTRINES)
 def test_crew_runs_one_full_cycle_per_doctrine(crew_ctx, doctrine):
     result = run_red_crew(crew_ctx, doctrine=doctrine)
-    expected_step_count = len(_build_script(doctrine))
     assert result.crew == "red"
     assert result.metadata["doctrine"] == doctrine
-    assert result.metadata["events_committed"] == expected_step_count
+    assert result.metadata["events_committed"] == _FALLBACK_EVENTS_PER_DOCTRINE[doctrine]
     assert result.metadata["validator_rejections"] == 0
     assert result.duration_ms >= 0
 
 
-def test_step_count_per_doctrine(crew_ctx):
-    """Peer / near-peer have 10 steps (S2.detect + S3.issue_order +
-    S3.request_support + Co A.assume_posture + Co A.send + Co B.halt +
-    Co B.engage + Co C.move_to + S6.send + S6.report). Hybrid has 9
-    (S3.issue_order + S3.request_support replaced by a single
-    S3.send_shadow)."""
-    assert len(_build_script("peer")) == 10
-    assert len(_build_script("near-peer")) == 10
+def test_script_entry_count_per_doctrine(crew_ctx):
+    """Peer / near-peer have 9 script entries (S2.detect + red.s3.llm_decide
+    + 7 deterministic suffix steps). Hybrid has 9 entries too. Both
+    doctrines collapse the v1 two-step S3 commander pair into one
+    script entry — peer/near-peer's via the LLM-driven step,
+    hybrid's via the unchanged Communicator.send substitute."""
+    assert len(_build_script("peer")) == 9
+    assert len(_build_script("near-peer")) == 9
     assert len(_build_script("hybrid")) == 9
+
+
+def test_peer_s3_step_is_llm_driven_in_fallback(crew_ctx):
+    """The conftest forces fallback. The two S3 steps in the resulting
+    outcomes carry llm_driven=False and a fallback_reason — that's the
+    audit trail for the recovery path."""
+    result = run_red_crew(crew_ctx, doctrine="peer")
+    s3_steps = [s for s in result.metadata["steps"] if "red.s3" in s["step"]]
+    assert len(s3_steps) == 2
+    for s in s3_steps:
+        assert s["llm_driven"] is False
+        assert "LLM disabled in unit tests" in s["fallback_reason"]
 
 
 @pytest.mark.parametrize("doctrine", VALID_DOCTRINES)

@@ -25,10 +25,12 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Union
 from uuid import UUID, uuid4
 
 from almighty_agent_runtime.crews import CrewContext, CrewResult
+from almighty_agent_runtime.llm_clients import build_red_llm
+from almighty_agent_runtime.llm_step import run_llm_role_step
 from almighty_czml_validator import Validator
 from almighty_kernel.dag import NamespacedDag
 from almighty_officer_tools import OfficerToolContext, build_all_tools
@@ -110,7 +112,12 @@ _INDIRECT_WEAPON_BY_DOCTRINE: dict[Doctrine, str] = {
 
 # ---- Step functions ----------------------------------------------------------
 
-_StepFn = Callable[[dict[str, _RoleBinding], dict[str, Any]], dict[str, Any]]
+# A step either commits exactly one event (returns a dict) or — for
+# LLM-driven roles — drives one or more tool calls via CrewAI (returns a
+# LIST of dicts, one per committed event). The main loop in run_red_crew
+# handles both shapes.
+_StepResult = Union[dict[str, Any], list[dict[str, Any]]]
+_StepFn = Callable[[dict[str, "_RoleBinding"], dict[str, Any]], _StepResult]
 
 
 def _step_s2_detect(
@@ -154,6 +161,72 @@ def _step_s3_request_isr(
         justification="confirm blue defensive disposition before assault",
         priority="HIGH",
     )
+
+
+def _step_red_s3_llm_decide(
+    roles: dict[str, _RoleBinding], _shared: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """LLM-driven red S3 (Gemma 4 31B on spark-3fe3, peer/near-peer only).
+
+    The red battalion operations officer reads PyRapide's situation
+    report (S2's detect from earlier in this cycle, plus any prior-turn
+    events still in the namespace) and decides which orders to issue
+    against the Cumberland River crossing objective. Committed events
+    cite the situation-report events as causal_predecessors.
+
+    Falls back to the deterministic _step_s3_issue_order_to_b +
+    _step_s3_request_isr pair if the LLM call raises.
+    """
+    s3_role = roles["s3"]
+    dag = s3_role.ctx.kernel_dag
+    tenant_id = s3_role.ctx.tenant_id
+    scenario_id = s3_role.ctx.scenario_id
+
+    before_ids = {e.event_id for e in dag.read(tenant_id=tenant_id, scenario_id=scenario_id)}
+
+    try:
+        llm = build_red_llm()
+        run_llm_role_step(
+            ctx=s3_role.ctx,
+            agent=s3_role.agent,
+            llm=llm,
+            task_description=(
+                "You are the red battalion operations officer attempting a "
+                "forced crossing of the Cumberland River from the east bank. "
+                "Based on the situation report, decide which orders to issue "
+                "against the west-bank objective. Use issue_order to direct "
+                "Companies A/B/C; use request_support for ISR / fires / EW. "
+                "One or two tool calls per turn — keep it tight."
+            ),
+            expected_output="Tool calls only. No prose.",
+        )
+        new_events = [
+            e for e in dag.read(tenant_id=tenant_id, scenario_id=scenario_id)
+            if e.event_id not in before_ids
+        ]
+        return [
+            {
+                "step": f"red.s3.llm_decide.{e.action_verb}",
+                "event_id": str(e.event_id),
+                "verb": e.action_verb,
+                "officer_type": e.source_officer_type,
+                "validator": "accepted" if e.payload.get("czml_template") else "skipped",
+                "causal_predecessors": [str(p) for p in e.causal_predecessors],
+                "llm_driven": True,
+            }
+            for e in new_events
+        ]
+    except Exception as exc:
+        s3_role.ctx.causal_predecessors = []
+        results = [
+            _step_s3_issue_order_to_b(roles, _shared),
+            _step_s3_request_isr(roles, _shared),
+        ]
+        for r in results:
+            r["step"] = f"red.s3.llm_decide_fallback.{r['verb']}"
+            r["llm_driven"] = False
+            r["fallback_reason"] = f"{type(exc).__name__}: {exc}"
+        return results
 
 
 def _step_s3_send_shadow(
@@ -299,13 +372,17 @@ def _build_script(doctrine: Doctrine) -> list[tuple[str, _StepFn]]:
         ("s2.detect", _step_s2_detect),
     ]
     if doctrine == "hybrid":
+        # Hybrid lacks Commander verbs; S3 falls back to a Communicator
+        # send. LLM-driven flow doesn't apply here.
         s3_steps: list[tuple[str, _StepFn]] = [
             ("s3.send_shadow", _step_s3_send_shadow),
         ]
     else:
+        # Peer / near-peer: S3 is LLM-driven (Gemma 4 31B on spark-3fe3).
+        # The single entry expands to 1-2 events at runtime depending on
+        # the LLM's tool calls; in fallback mode it expands to exactly 2.
         s3_steps = [
-            ("s3.issue_order", _step_s3_issue_order_to_b),
-            ("s3.request_support", _step_s3_request_isr),
+            ("red.s3.llm_decide", _step_red_s3_llm_decide),
         ]
     common_suffix = [
         ("co_a.assume_posture", _step_co_a_assume_posture),
@@ -362,7 +439,12 @@ def run_red_crew(
     step_outcomes: list[dict[str, Any]] = []
     for label, step_fn in script:
         result = step_fn(bindings, shared)
-        step_outcomes.append({"step": label, **result})
+        if isinstance(result, list):
+            # LLM-driven step returns one entry per committed event; the
+            # entries already have their own "step" labels.
+            step_outcomes.extend(result)
+        else:
+            step_outcomes.append({"step": label, **result})
 
     duration_ms = int((time.perf_counter() - started) * 1000)
     return CrewResult(
