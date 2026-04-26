@@ -48,6 +48,13 @@ def start_worker(
     os.environ["CONTROL_PLANE_URL"] = config.control_plane_url
     configure_app(redis_url=config.redis_url, task_always_eager=False)
 
+    # Swap NoOpCrew stubs for the deterministic crews shipped by
+    # WS-403/WS-404/WS-405. Sides whose package isn't installed keep
+    # their no-op fallback so harness-only test environments still work.
+    from almighty_agent_runtime.wiring import register_real_crews
+
+    register_real_crews()
+
     queue = tenant_queue_name(config.tenant_id)
     argv = [
         "worker",

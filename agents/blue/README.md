@@ -87,19 +87,11 @@ guaranteed `0` for the happy path; any reject would have raised
 ## Integration with WS-401 harness
 
 The v1 crew matches Shane's `CrewRunner = Callable[[CrewContext],
-CrewResult]` signature and exports `BLUE_RUNNER`. The WS-401 harness's
-`BLUE_CREWS["default"]` is currently the no-op stub; a follow-up ticket
-will swap it for `BLUE_RUNNER`:
-
-```python
-# In agents/runtime/src/almighty_agent_runtime/crews.py:
-from almighty_blue_crew import BLUE_RUNNER
-BLUE_CREWS["default"] = BLUE_RUNNER
-```
-
-That swap is intentionally NOT in this PR — it should land when WS-403
-/ WS-404 / WS-405 all exist so the harness has all three crews live
-together.
+CrewResult]` signature and exports `BLUE_RUNNER`. The WS-401 harness
+auto-registers `BLUE_RUNNER` into `BLUE_CREWS["default"]` at worker
+startup via `almighty_agent_runtime.wiring.register_real_crews()`.
+Tests can call that function explicitly; the no-op stub is the fallback
+when this package isn't installed.
 
 ## Why the crew is self-contained (instantiates its own DAG + Validator)
 

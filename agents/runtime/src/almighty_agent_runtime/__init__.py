@@ -12,12 +12,15 @@ from almighty_agent_runtime.errors import (
     NamespaceMismatchError,
     RuntimeConfigError,
 )
+from almighty_agent_runtime.wiring import register_noop_crews, register_real_crews
 from almighty_agent_runtime.worker import start_worker
 
 __all__ = [
     "make_app",
     "tenant_queue_name",
     "enqueue_turn",
+    "register_real_crews",
+    "register_noop_crews",
     "start_worker",
     "NamespaceMismatchError",
     "RuntimeConfigError",

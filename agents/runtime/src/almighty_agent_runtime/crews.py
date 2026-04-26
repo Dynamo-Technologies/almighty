@@ -1,13 +1,17 @@
 """Crew abstraction.
 
 The harness owns process lifecycle and queue routing; the *crews* are
-the actual decision-making machinery (CrewAI agents in WS-403/404/405).
+the actual decision-making machinery (CrewAI agents in
+``almighty_blue_crew`` / ``almighty_red_crew`` / ``almighty_white_cell``,
+shipped by WS-403 / WS-404 / WS-405).
 
-For WS-401 we ship a :class:`NoOpCrew` placeholder per side so the
-harness can run end-to-end before the real crews land. WS-403 (#23) and
-WS-404 (#24) replace ``BLUE_CREWS`` and ``RED_CREWS`` with CrewAI
-:class:`crewai.Crew` instances; WS-405 (#25) replaces ``WHITE_CREWS``
-with the adjudicator.
+The three ``*_CREWS`` dicts in this module hold no-op stubs as the
+fallback default so the runtime can be tested in isolation. At worker
+startup, :func:`almighty_agent_runtime.wiring.register_real_crews`
+imports each crew package (guarded; sides whose package isn't installed
+keep their stub) and swaps the matching ``"default"`` slot to the real
+deterministic runner. The runner contract (``CrewContext → CrewResult``)
+is stable across the swap.
 """
 
 from __future__ import annotations
@@ -47,7 +51,10 @@ CrewRunner = Callable[[CrewContext], CrewResult]
 
 
 # ---------------------------------------------------------------------------
-# v1 stub crews — replaced by WS-403 / WS-404 / WS-405.
+# Fallback no-op stubs. The real deterministic crews from
+# almighty_blue_crew / almighty_red_crew / almighty_white_cell are
+# wired in by :func:`almighty_agent_runtime.wiring.register_real_crews`
+# at worker startup; sides whose package isn't installed keep their stub.
 # ---------------------------------------------------------------------------
 
 
