@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { type Viewer as CesiumViewer } from "cesium";
 
 import { CesiumScene } from "../components/CesiumScene";
@@ -40,6 +40,25 @@ const CONTROL_PLANE_BASE = (() => {
 
 export function Demo() {
   const { tenantId, scenarioId } = useParams<{ tenantId: string; scenarioId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
+  // ?token=... → store + strip from URL so the JWT isn't in the address bar
+  // for the duration of the demo. One-shot: if the param's there, persist
+  // it to localStorage and remove it so the next reload doesn't re-set.
+  useEffect(() => {
+    const tokenParam = searchParams.get("token");
+    if (tokenParam) {
+      try {
+        window.localStorage.setItem("almighty.jwt", tokenParam);
+      } catch {
+        /* localStorage might be blocked; user will see access-denied */
+      }
+      const next = new URLSearchParams(searchParams);
+      next.delete("token");
+      setSearchParams(next, { replace: true });
+      window.location.reload();
+    }
+  }, [searchParams, setSearchParams]);
+
   const claims = useJwtClaims();
 
   const [, setViewer] = useState<CesiumViewer | null>(null);
