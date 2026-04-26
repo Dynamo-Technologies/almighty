@@ -30,6 +30,12 @@ test -d "$REPO_ROOT/agents/runtime" || {
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 # Start fresh. Notes:
+#   --entrypoint bash    — the crewai:stig-hardened-boto3 image has
+#                          ENTRYPOINT = ["python","-m","crewai.cli.cli"]
+#                          baked in. Without overriding, our bash -c …
+#                          would be passed as args to the crewai CLI and
+#                          fail with "No such command 'bash'". Override
+#                          to bash and pass the script via -c.
 #   --network host       — share the Spark's network namespace so the
 #                          shim can reach localhost:8001 (vllm-agent) and
 #                          the EC2 can reach us at 100.106.123.5:$PORT.
@@ -39,6 +45,7 @@ docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 #                          doesn't have. ~30s on first start, cached
 #                          afterward in the container's writable layer.
 docker run -d --name "$CONTAINER" \
+  --entrypoint bash \
   --network host \
   --restart unless-stopped \
   -v "$REPO_ROOT:/app/almighty:ro" \
@@ -48,7 +55,7 @@ docker run -d --name "$CONTAINER" \
   -e BLUE_LLM_API_KEY="EMPTY" \
   -e RED_LLM_API_KEY="EMPTY" \
   "$IMAGE" \
-  bash -c "
+  -c "
     set -e
     pip install --no-cache-dir --quiet \
       fastapi 'uvicorn[standard]' httpx pyrapide pydantic
