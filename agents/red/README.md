@@ -137,19 +137,14 @@ records.
 ## Integration with WS-401 harness
 
 The v1 crew matches Shane's `CrewRunner = Callable[[CrewContext],
-CrewResult]` signature and exports `RED_RUNNER`. The WS-401 harness's
-`RED_CREWS["default"]` is currently the no-op stub; a follow-up ticket
-should swap it once WS-403 (blue) and WS-405 (white cell) are also
-ready to land together. The integration form will look like:
+CrewResult]` signature and exports `RED_RUNNER`. The WS-401 harness
+auto-registers `RED_RUNNER` into `RED_CREWS["default"]` at worker
+startup via `almighty_agent_runtime.wiring.register_real_crews()`.
+Tests can call that function explicitly; the no-op stub is the fallback
+when this package isn't installed.
 
-```python
-# In agents/runtime/src/almighty_agent_runtime/crews.py:
-from almighty_red_crew import RED_RUNNER
-RED_CREWS["default"] = RED_RUNNER
-```
-
-Doctrine selection in the harness will likely use the env var
-(set per worker process), since the runtime is process-per-tenant.
+Doctrine selection (peer / near-peer / hybrid) is per-process via the
+relevant env var, since the runtime is process-per-tenant.
 
 ## Run
 

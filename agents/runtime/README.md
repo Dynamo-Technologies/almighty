@@ -201,11 +201,13 @@ today; opt-in only.
   to receive these. Until it does, the harness soft-fails the POST.
   Once it exists, tighten ``control_plane.py`` to surface 4xx as task
   failures.
-- **Real CrewAI integration.** ``crews.py`` ships ``NoOpCrew`` stubs
-  per side. WS-403 (#23) replaces ``BLUE_CREWS["default"]``, WS-404
-  (#24) replaces ``RED_CREWS["default"]``, WS-405 (#25) replaces
-  ``WHITE_CREWS["default"]``. The runner contract
-  (``CrewContext → CrewResult``) is stable.
+- **Real CrewAI integration.** ``crews.py`` keeps NoOp stubs as the
+  fallback default. ``wiring.register_real_crews()`` (called from
+  ``worker.start_worker``) swaps each side's ``"default"`` slot to the
+  deterministic runner shipped by WS-403 (blue), WS-404 (red), and
+  WS-405 (white-cell) when those packages are installed. Sides whose
+  package isn't on the import path keep their no-op fallback so the
+  runtime can still be tested in isolation.
 - **Retries.** Failed crew tasks halt the chain. v1 doesn't retry;
   white-cell operators inspect logs and re-enqueue. Tracked as a
   follow-up.
