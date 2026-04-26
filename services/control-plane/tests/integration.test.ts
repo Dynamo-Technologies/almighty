@@ -282,3 +282,104 @@ describe("tenant lifecycle", () => {
     expect(list.json().tenants).toHaveLength(0);
   });
 });
+
+describe("GET /tenants/:id/scenarios/:sid/events (WS-506)", () => {
+  const SCENARIO_ID = "33333333-3333-4333-8333-333333333333";
+
+  async function seedEntity(entityId: string): Promise<void> {
+    await pool.query(
+      `INSERT INTO entities (
+         entity_id, tenant_id, scenario_id, type_category, type_subtype_ref,
+         display_name, force_affiliation,
+         position_lat_deg, position_lon_deg, position_alt_m,
+         position_ecef_x_m, position_ecef_y_m, position_ecef_z_m,
+         velocity_ecef_vx_mps, velocity_ecef_vy_mps, velocity_ecef_vz_mps,
+         orientation_qw, orientation_qx, orientation_qy, orientation_qz,
+         capability_set_ref
+       ) VALUES (
+         $1, $2, $3, 'GROUND_UNIT', 'notional.test.unit',
+         'Test unit', 'BLUE',
+         36.18, -86.78, 200,
+         0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 'test@1'
+       )`,
+      [entityId, TENANT_A, SCENARIO_ID],
+    );
+  }
+
+  async function seedEvent(opts: { event_id: string; entity_id: string; turn: number; ts: string; verb?: string }): Promise<void> {
+    await pool.query(
+      `INSERT INTO events (
+         event_id, tenant_id, scenario_id, turn,
+         source_officer_type, source_entity_id, action_verb, payload,
+         causal_predecessors, ts
+       ) VALUES (
+         $1, $2, $3, $4, 'EFFECTOR', $5, $6, '{"target":"x"}'::jsonb, '{}'::uuid[], $7
+       )`,
+      [opts.event_id, TENANT_A, SCENARIO_ID, opts.turn, opts.entity_id, opts.verb ?? "engage", opts.ts],
+    );
+  }
+
+  beforeEach(async () => {
+    await seedTenant(TENANT_A, "Tenant A");
+    await seedTenant(TENANT_B, "Tenant B");
+    await pool.query(
+      `INSERT INTO scenarios (scenario_id, tenant_id, display_name) VALUES ($1, $2, $3)`,
+      [SCENARIO_ID, TENANT_A, "Demo scenario"],
+    );
+    const ENTITY = "44444444-4444-4444-8444-444444444444";
+    await seedEntity(ENTITY);
+    await seedEvent({ event_id: "55555555-5555-4555-8555-555555555501", entity_id: ENTITY, turn: 1, ts: "2026-04-25T22:00:00Z" });
+    await seedEvent({ event_id: "55555555-5555-4555-8555-555555555502", entity_id: ENTITY, turn: 1, ts: "2026-04-25T22:00:30Z", verb: "suppress" });
+    await seedEvent({ event_id: "55555555-5555-4555-8555-555555555503", entity_id: ENTITY, turn: 2, ts: "2026-04-25T22:01:00Z", verb: "destroy" });
+  });
+
+  it("returns events for own tenant + scenario, ordered by ts", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/tenants/${TENANT_A}/scenarios/${SCENARIO_ID}/events`,
+      headers: auth({ tenant_id: TENANT_A, cell_role: "blue" }),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.count).toBe(3);
+    expect(body.events.map((e: { action_verb: string }) => e.action_verb)).toEqual(["engage", "suppress", "destroy"]);
+  });
+
+  it.each(["white", "blue", "red", "observer"] as const)("%s can read events", async (role) => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/tenants/${TENANT_A}/scenarios/${SCENARIO_ID}/events`,
+      headers: auth({ tenant_id: TENANT_A, cell_role: role }),
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("denies cross-tenant read", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/tenants/${TENANT_A}/scenarios/${SCENARIO_ID}/events`,
+      headers: auth({ tenant_id: TENANT_B, cell_role: "white" }),
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it("filters by since_ts / until_ts", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/tenants/${TENANT_A}/scenarios/${SCENARIO_ID}/events?since_ts=2026-04-25T22:00:25Z&until_ts=2026-04-25T22:00:45Z`,
+      headers: auth({ tenant_id: TENANT_A, cell_role: "white" }),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.count).toBe(1);
+    expect(body.events[0].action_verb).toBe("suppress");
+  });
+
+  it("requires auth", async () => {
+    const res = await app.inject({
+      method: "GET",
+      url: `/tenants/${TENANT_A}/scenarios/${SCENARIO_ID}/events`,
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});

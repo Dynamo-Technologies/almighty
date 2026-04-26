@@ -4,6 +4,7 @@ import { ScenarioRoot } from "./routes/ScenarioRoot";
 import { Index } from "./routes/Index";
 import { ExconConsole } from "./routes/ExconConsole";
 import { WhiteCellConsole } from "./routes/WhiteCellConsole";
+import { AarReplay } from "./routes/AarReplay";
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +27,10 @@ export const router = createBrowserRouter([
       {
         path: ":tenantId/scenarios/:scenarioId/white-cell",
         element: <WhiteCellConsole />,
+      },
+      {
+        path: ":tenantId/scenarios/:scenarioId/aar",
+        element: <AarReplay />,
       },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
