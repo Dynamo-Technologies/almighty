@@ -26,6 +26,11 @@ Multi-tenant control plane for Almighty. Owns the **tenants** + **scenarios** re
 | GET | `/tenants/:id/scenarios/:sid` | all (own tenant) | Read scenario. |
 | PATCH | `/tenants/:id/scenarios/:sid` | white (own tenant) | Update `display_name` / `description` / `status`. |
 | DELETE | `/tenants/:id/scenarios/:sid` | white (own tenant) | Soft-delete. |
+| POST | `/tenants/:id/scenarios/:sid/turns/advance` | white (own tenant) | WS-302. Advance turn; 409 on conflict, 404 on unknown scenario. |
+| POST | `/tenants/:id/scenarios/:sid/overrides` | white (own tenant) | WS-303. Author override policy. |
+| GET | `/tenants/:id/scenarios/:sid/overrides` | all (own tenant) | WS-303. List active policies. |
+| DELETE | `/tenants/:id/scenarios/:sid/overrides/:oid` | white (own tenant) | WS-303. Revoke (soft; sets `status='revoked'`). |
+| POST | `/tenants/:id/scenarios/:sid/events/:eid/decision` | white (own tenant) | WS-303. Manual review decision. |
 | GET | `/healthz` | none (open) | Liveness probe. |
 
 **Cross-tenant access is impossible by construction**: the URL `:id` is checked against the JWT's `tenant_id` on every tenant-scoped endpoint, and tenant lists are filtered by JWT `tenant_id`. Cross-tenant requests return `403`.
@@ -46,10 +51,12 @@ Production switch to RS256 + JWKS is a config change in `app.ts` (swap `@fastify
 
 ## DB
 
-Two migrations under `migrations/`:
+Migrations under `migrations/`:
 
 1. **`*_initial-schema.sql`** — applies the WS-101 entity/event DDL (the source-of-truth doc lives at `docs/schema/entity-event.md`; the unrun stub lives at `kernel/schema/entities.sql` + `events.sql`; this migration is the runtime applier).
 2. **`*_tenants-scenarios.sql`** — adds `tenants` + `scenarios` tables, both with soft-delete via a `status` enum.
+3. **`*_turn-snapshots.sql`** — WS-302. Adds `current_turn` + `turn_state` columns to `scenarios` and the `turn_snapshots` table.
+4. **`*_override-policies.sql`** — WS-303. Adds `override_policies` (authored rules) and `override_decisions` (append-only audit log of every gateway firing).
 
 Per-tenant DB isolation (one Postgres database per tenant, à la WS-004) is **not** in scope here; v1 uses a single shared DB with namespace-checked queries. The WS-004 Terraform module remains the production path.
 
@@ -98,6 +105,26 @@ Coverage:
 - Cross-tenant denial: list filtering, GET / PATCH / DELETE on other tenant's IDs, scenario reads from foreign tenant.
 - Scenarios cell-role matrix: read for all roles, write only for white.
 - Lifecycle: PATCH + soft-delete on tenants and scenarios.
+
+## WS-303 override gateway
+
+The override gateway gates agent-emitted events before they commit to the DAG. Three policy scopes — `per-event` (single event id), `per-agent-per-turn` (entity acting in a specific turn), `per-turn` (blanket rule for a turn) — and three actions: `auto-approve`, `auto-block`, `review`.
+
+### Composability
+
+Strict priority: **per-event > per-agent-per-turn > per-turn > default-review**. The first matching active policy wins. When no policy applies, the default is `review` — the event holds in `review-pending` until a white cell operator posts a manual decision via `POST /events/:eid/decision`.
+
+### TTL
+
+A policy is valid in turn `T` iff `created_in_turn ≤ T ≤ created_in_turn + ttl_turns`. `ttl_turns = 0` means "single-turn validity" (the turn it was authored in).
+
+### Audit
+
+Every evaluation fires an `override_decisions` row, regardless of outcome. The default-review path also logs. Manual decisions append a separate row referencing the same `event_id`. AAR (WS-506) joins this against `events` on `(tenant_id, scenario_id, event_id)` for replay.
+
+### Turn-controller integration
+
+The WS-302 turn controller calls `applyOverrides(pool, …)` from `src/override-gateway.ts` as step 3 of turn-advance. v1 returns `processedEvents = 0` because there is no agent commit queue yet — once WS-401 (agent runtime) lands, this is where queue-drain + per-event evaluation will hook in.
 
 ## Open questions
 
