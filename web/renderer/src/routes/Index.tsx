@@ -15,9 +15,12 @@ export function Index() {
         <li>
           <Link to="/demo/scenarios/demo/excon/red">demo / demo — EXCON red</Link>
         </li>
+        <li>
+          <Link to="/demo/scenarios/demo/white-cell">demo / demo — white cell control</Link>
+        </li>
       </ul>
       <p className="index__hint">
-        EXCON consoles require a JWT with the matching <code>cell_role</code>.
+        Operator consoles require a JWT with the matching <code>cell_role</code>.
         Append <code>?jwt=&lt;token&gt;</code> to the URL to set one.
       </p>
     </div>

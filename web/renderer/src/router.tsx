@@ -3,6 +3,7 @@ import { App } from "./App";
 import { ScenarioRoot } from "./routes/ScenarioRoot";
 import { Index } from "./routes/Index";
 import { ExconConsole } from "./routes/ExconConsole";
+import { WhiteCellConsole } from "./routes/WhiteCellConsole";
 
 export const router = createBrowserRouter([
   {
@@ -21,6 +22,10 @@ export const router = createBrowserRouter([
       {
         path: ":tenantId/scenarios/:scenarioId/excon/red",
         element: <ExconConsole side="red" />,
+      },
+      {
+        path: ":tenantId/scenarios/:scenarioId/white-cell",
+        element: <WhiteCellConsole />,
       },
       { path: "*", element: <Navigate to="/" replace /> },
     ],
