@@ -23,7 +23,6 @@ import { CesiumScene } from "../components/CesiumScene";
 import { CzmlLoader } from "../components/CzmlLoader";
 import { CesiumViewerExposer } from "../components/CesiumViewerExposer";
 import { EventLog } from "../components/EventLog";
-import { Banner } from "../components/Banner";
 import { DevTokenForm } from "../components/DevTokenForm";
 import { useJwtClaims } from "../auth/jwt";
 import { getStoredToken } from "../auth/jwt";
@@ -120,8 +119,7 @@ export function Demo() {
   if (!claims) {
     return (
       <div className="excon-demo excon-demo--locked">
-        <Banner position="top" />
-        <div className="excon-demo__locked-card">
+          <div className="excon-demo__locked-card">
           <h1>Almighty — Nashville Cumberland River crossing</h1>
           <p>Set the dev JWT to continue.</p>
           <DevTokenForm />
@@ -132,7 +130,6 @@ export function Demo() {
 
   return (
     <div className="excon-demo">
-      <Banner position="top" />
       <header className="excon-demo__header">
         <h1>Almighty — Nashville Cumberland River crossing</h1>
         <p className="excon-demo__subtitle">
