@@ -322,27 +322,22 @@ EOF
 # 7. Bring up the stack
 docker compose --env-file .env up -d
 
-# 8. UPSERT the Route 53 A record
-ZONE_ID=__ROUTE53_ZONE_ID__
-cat > /tmp/route53-change.json <<EOF
-{
-  "Changes": [{
-    "Action": "UPSERT",
-    "ResourceRecordSet": {
-      "Name": "almighty-demo.dynamo.works",
-      "Type": "A",
-      "TTL": 60,
-      "ResourceRecords": [{"Value": "$TS_IP"}]
-    }
-  }]
-}
-EOF
-aws route53 change-resource-record-sets \
-  --hosted-zone-id "$ZONE_ID" \
-  --change-batch file:///tmp/route53-change.json
-
+# Route 53 A record is created MANUALLY by the operator after this
+# script finishes. cloud-init only prints the Tailscale IP that the
+# A record should point at:
+echo "------------------------------------------------------------------"
 echo "almighty-demo cloud-init complete at $(date -Is)"
+echo "Tailscale IP: $TS_IP"
+echo "Manual next step: create Route 53 A record"
+echo "  almighty-demo.dynamo.works  →  $TS_IP"
+echo "------------------------------------------------------------------"
 ```
+
+> **Amendment 2026-04-26:** the operator creates the Route 53 A record manually
+> (either via the AWS console or a single `aws route53` CLI call) after cloud-init
+> finishes and the Tailscale IP is known. See `infra/aws/demo/RUNBOOK.md` step 11
+> for the exact command. The instance role still grants Caddy permission to
+> manage the `_acme-challenge` TXT record for the DNS-01 cert challenge.
 
 - [ ] **Step 3: Commit**
 

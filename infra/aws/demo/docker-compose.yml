@@ -1,0 +1,58 @@
+services:
+  caddy:
+    image: almighty-caddy:demo
+    restart: unless-stopped
+    ports:
+      # Bind to the Tailscale IP only — public ingress stays closed.
+      # cloud-init writes ${TAILSCALE_IP} into .env after `tailscale up`.
+      - "${TAILSCALE_IP}:443:443"
+      - "${TAILSCALE_IP}:80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../../web/renderer/dist:/srv/web:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      AWS_REGION: ${AWS_REGION}
+    depends_on: [control-plane, websocket]
+
+  control-plane:
+    image: node:20-bookworm-slim
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../../services/control-plane:/app
+    command: ["sh", "-c", "npm ci && npm run build && node dist/server.js"]
+    environment:
+      DATABASE_URL: ${SUPABASE_DATABASE_URL}
+      PORT: "4000"
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      SPARK_WORKER_URL: http://100.106.123.5:7000
+    expose: ["4000"]
+
+  websocket:
+    image: node:20-bookworm-slim
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../../services/websocket:/app
+    command: ["sh", "-c", "npm ci && npm run build && node dist/server.js"]
+    environment:
+      DATABASE_URL: ${SUPABASE_DATABASE_URL}
+      PORT: "4001"
+    expose: ["4001"]
+
+  czml-adapter:
+    image: python:3.12-slim
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ../../../services/czml-adapter:/app
+    command: ["sh", "-c", "pip install --no-cache-dir -e . && python -m almighty_czml_adapter.runner"]
+    environment:
+      DATABASE_URL: ${SUPABASE_DATABASE_URL}
+    expose: ["4002"]
+
+volumes:
+  caddy-data:
+  caddy-config:
