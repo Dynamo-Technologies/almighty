@@ -915,6 +915,95 @@ body,
   font-family: ui-monospace, "SF Mono", monospace;
 }
 
+/* ----- Demo console (single-button EXCON) -------------------------------- */
+
+.excon-demo {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  height: 100vh;
+  background: #0a0a0a;
+  color: #ddd;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.excon-demo--locked {
+  grid-template-rows: auto 1fr;
+}
+.excon-demo__locked-card {
+  margin: 60px auto;
+  max-width: 560px;
+  padding: 24px;
+  background: #181818;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+}
+.excon-demo__header {
+  padding: 12px 24px 8px;
+  border-bottom: 1px solid #1f1f1f;
+}
+.excon-demo__header h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+.excon-demo__subtitle {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #888;
+  letter-spacing: 0.04em;
+}
+.excon-demo__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  min-height: 0;
+  gap: 1px;
+  background: #1f1f1f;
+}
+.excon-demo__map {
+  background: #000;
+  position: relative;
+  min-height: 0;
+}
+.excon-demo__events {
+  background: #0e0e0e;
+  overflow-y: auto;
+  padding: 12px;
+  border-left: 1px solid #1f1f1f;
+}
+.excon-demo__footer {
+  padding: 16px 24px;
+  border-top: 1px solid #1f1f1f;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.excon-demo__advance {
+  background: #c0dd97;
+  color: #0a0a0a;
+  border: none;
+  border-radius: 4px;
+  padding: 14px 36px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms ease-out;
+}
+.excon-demo__advance:hover:not(:disabled) {
+  background: #d4eda8;
+}
+.excon-demo__advance:disabled {
+  background: #555;
+  color: #aaa;
+  cursor: progress;
+}
+.excon-demo__error {
+  color: #f08080;
+  font-size: 12px;
+  margin: 0;
+}
+
 .event-log__causal {
   display: inline-flex;
   flex-wrap: wrap;
