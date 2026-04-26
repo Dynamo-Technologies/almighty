@@ -111,7 +111,13 @@ def test_run_llm_role_step_sets_predecessors_before_tool_call_and_resets_after()
 
     def tool_run(**kwargs):
         captured_predecessors.append(list(ctx.causal_predecessors))
-        return {"event_id": "x", "verb": "issue_order"}
+        return {
+            "event_id": "x",
+            "verb": "issue_order",
+            "officer_type": "COMMANDER",
+            "validator": "skipped",
+            "causal_predecessors": [str(e1.event_id), str(e2.event_id)],
+        }
 
     tool._run = MagicMock(side_effect=tool_run)
     agent = _mock_agent([tool])
@@ -119,7 +125,7 @@ def test_run_llm_role_step_sets_predecessors_before_tool_call_and_resets_after()
 
     with patch("almighty_agent_runtime.llm_step.httpx.post") as mock_post:
         mock_post.return_value = _vllm_response_with_tool_call(name="issue_order")
-        run_llm_role_step(
+        results = run_llm_role_step(
             ctx=ctx, agent=agent, llm=llm,
             task_description="Decide.",
             expected_output="Tool calls only.",
@@ -131,6 +137,11 @@ def test_run_llm_role_step_sets_predecessors_before_tool_call_and_resets_after()
     assert ctx.causal_predecessors == []
     # The tool was called once with the LLM-supplied args.
     tool._run.assert_called_once_with(order_type="MOVE")
+    # Helper returns the tool-result dict, with predecessors intact for
+    # the crew's wire-format step list.
+    assert len(results) == 1
+    assert results[0]["verb"] == "issue_order"
+    assert results[0]["causal_predecessors"] == [str(e1.event_id), str(e2.event_id)]
 
 
 def test_run_llm_role_step_includes_situation_report_in_user_message():
@@ -181,13 +192,14 @@ def test_run_llm_role_step_handles_text_only_response():
     )
     with patch("almighty_agent_runtime.llm_step.httpx.post") as mock_post:
         mock_post.return_value = text_only
-        run_llm_role_step(
+        results = run_llm_role_step(
             ctx=ctx, agent=agent, llm=llm,
             task_description="x", expected_output="y",
         )
 
     tool._run.assert_not_called()
     assert ctx.causal_predecessors == []
+    assert results == []
 
 
 def test_run_llm_role_step_resets_predecessors_on_exception():

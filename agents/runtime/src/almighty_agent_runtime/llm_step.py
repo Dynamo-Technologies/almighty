@@ -56,10 +56,20 @@ def run_llm_role_step(
     llm: "LLM",
     task_description: str,
     expected_output: str,
-) -> None:
-    """Run one LLM-driven role step. Mutates ctx.causal_predecessors twice
-    (set then reset). Side-effect: the agent's tools commit a KernelEvent
-    via the configured kernel_dag during this call."""
+) -> list[dict[str, Any]]:
+    """Run one LLM-driven role step. Returns the list of tool-result
+    dicts from each tool call the LLM emitted. Each dict has the shape
+    OfficerToolBase._run produces (event_id, verb, officer_type,
+    validator, causal_predecessors).
+
+    The dicts are the source of truth for the wire format the FastAPI
+    shim relays back — do NOT rely on dag.read() for predecessors,
+    because the kernel's _reconstruct drops causal_predecessors by
+    design (see kernel/almighty_kernel/dag.py:243).
+
+    Side effects: mutates ctx.causal_predecessors twice (set then reset)
+    and commits one KernelEvent per tool call to ctx.kernel_dag.
+    """
     import os
 
     # 1. Situation report + predecessors capture.
@@ -99,8 +109,8 @@ def run_llm_role_step(
             timeout=float(os.environ.get("ALMIGHTY_LLM_TIMEOUT_S", _DEFAULT_TIMEOUT_S)),
         )
 
-        # 5. Run any tool calls the model emitted.
-        _run_tool_calls(agent.tools, completion)
+        # 5. Run any tool calls the model emitted; collect their result dicts.
+        return _run_tool_calls(agent.tools, completion)
     finally:
         # 6. Reset for the next deterministic step (defense-in-depth).
         ctx.causal_predecessors = []
@@ -171,17 +181,20 @@ def _call_chat_completions(
     return resp.json()
 
 
-def _run_tool_calls(tools: list, completion: dict[str, Any]) -> None:
-    """Look up each tool_call by name and invoke its _run(**args)."""
+def _run_tool_calls(tools: list, completion: dict[str, Any]) -> list[dict[str, Any]]:
+    """Look up each tool_call by name and invoke its _run(**args).
+    Returns the list of result dicts (in tool_calls order). Tool calls
+    that can't be parsed or don't match a bound tool are skipped silently."""
     choices = completion.get("choices") or []
     if not choices:
-        return
+        return []
     message = choices[0].get("message") or {}
     tool_calls = message.get("tool_calls") or []
     if not tool_calls:
-        return  # Model responded with text only — caller's fallback will run
+        return []  # Model responded with text only — caller's fallback will run
 
     by_name = {getattr(t, "name", type(t).__name__): t for t in tools}
+    results: list[dict[str, Any]] = []
     for tc in tool_calls:
         fn = (tc or {}).get("function") or {}
         name = fn.get("name")
@@ -193,4 +206,7 @@ def _run_tool_calls(tools: list, completion: dict[str, Any]) -> None:
         tool = by_name.get(name)
         if tool is None:
             continue
-        tool._run(**args)
+        result = tool._run(**args)
+        if isinstance(result, dict):
+            results.append(result)
+    return results

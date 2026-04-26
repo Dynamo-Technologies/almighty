@@ -244,15 +244,14 @@ def _step_s3_llm_decide(roles: dict[str, _RoleBinding]) -> list[dict[str, Any]]:
     loop can extend ``step_outcomes`` uniformly.
     """
     s3_role = roles["s3"]
-    dag = s3_role.ctx.kernel_dag
-    tenant_id = s3_role.ctx.tenant_id
-    scenario_id = s3_role.ctx.scenario_id
-
-    before_ids = {e.event_id for e in dag.read(tenant_id=tenant_id, scenario_id=scenario_id)}
 
     try:
         llm = build_blue_llm()
-        run_llm_role_step(
+        # The helper returns one result dict per tool call. Each dict is
+        # exactly what OfficerToolBase._run produced, including
+        # causal_predecessors as a string list — don't go through
+        # dag.read() because the kernel's _reconstruct drops predecessors.
+        results = run_llm_role_step(
             ctx=s3_role.ctx,
             agent=s3_role.agent,
             llm=llm,
@@ -269,22 +268,21 @@ def _step_s3_llm_decide(roles: dict[str, _RoleBinding]) -> list[dict[str, Any]]:
                 "issue_order(...) or request_support(...)."
             ),
         )
-        new_events = [
-            e for e in dag.read(tenant_id=tenant_id, scenario_id=scenario_id)
-            if e.event_id not in before_ids
-        ]
+        if not results:
+            # Gemma replied with text only — fall through to the fallback
+            # so the demo always commits some events for the renderer.
+            raise RuntimeError("LLM returned no tool calls")
         return [
             {
-                "step": f"s3.llm_decide.{e.action_verb}",
-                "event_id": str(e.event_id),
-                "verb": e.action_verb,
-                "officer_type": e.source_officer_type,
-                # Inferred: spatial verbs carry czml_template; non-spatial don't
-                "validator": "accepted" if e.payload.get("czml_template") else "skipped",
-                "causal_predecessors": [str(p) for p in e.causal_predecessors],
+                "step": f"s3.llm_decide.{r.get('verb')}",
+                "event_id": r.get("event_id"),
+                "verb": r.get("verb"),
+                "officer_type": r.get("officer_type"),
+                "validator": r.get("validator"),
+                "causal_predecessors": r.get("causal_predecessors", []),
                 "llm_driven": True,
             }
-            for e in new_events
+            for r in results
         ]
     except Exception as exc:
         # Demo safety net: fall back to the deterministic pair so the

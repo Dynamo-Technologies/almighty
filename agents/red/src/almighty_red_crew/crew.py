@@ -178,15 +178,10 @@ def _step_red_s3_llm_decide(
     _step_s3_request_isr pair if the LLM call raises.
     """
     s3_role = roles["s3"]
-    dag = s3_role.ctx.kernel_dag
-    tenant_id = s3_role.ctx.tenant_id
-    scenario_id = s3_role.ctx.scenario_id
-
-    before_ids = {e.event_id for e in dag.read(tenant_id=tenant_id, scenario_id=scenario_id)}
 
     try:
         llm = build_red_llm()
-        run_llm_role_step(
+        results = run_llm_role_step(
             ctx=s3_role.ctx,
             agent=s3_role.agent,
             llm=llm,
@@ -200,21 +195,19 @@ def _step_red_s3_llm_decide(
             ),
             expected_output="Tool calls only. No prose.",
         )
-        new_events = [
-            e for e in dag.read(tenant_id=tenant_id, scenario_id=scenario_id)
-            if e.event_id not in before_ids
-        ]
+        if not results:
+            raise RuntimeError("LLM returned no tool calls")
         return [
             {
-                "step": f"red.s3.llm_decide.{e.action_verb}",
-                "event_id": str(e.event_id),
-                "verb": e.action_verb,
-                "officer_type": e.source_officer_type,
-                "validator": "accepted" if e.payload.get("czml_template") else "skipped",
-                "causal_predecessors": [str(p) for p in e.causal_predecessors],
+                "step": f"red.s3.llm_decide.{r.get('verb')}",
+                "event_id": r.get("event_id"),
+                "verb": r.get("verb"),
+                "officer_type": r.get("officer_type"),
+                "validator": r.get("validator"),
+                "causal_predecessors": r.get("causal_predecessors", []),
                 "llm_driven": True,
             }
-            for e in new_events
+            for r in results
         ]
     except Exception as exc:
         s3_role.ctx.causal_predecessors = []
