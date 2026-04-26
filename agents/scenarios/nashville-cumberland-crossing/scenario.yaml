@@ -1,0 +1,128 @@
+# WS-601 — Nashville Cumberland River crossing
+#
+# Integration capstone scenario. Six-turn scripted demo: blue defends
+# the west bank; red attempts a forced crossing with combined arms +
+# EW + UAS. Anchor: 36.18°N, 86.78°W (north of downtown Nashville).
+#
+# Classification: UNCLASSIFIED — FOR DEMONSTRATION PURPOSES ONLY.
+#
+# Companion files:
+#   pre-scenario.md   white-cell operator runbook (profiles + policies)
+#   assertions.md     observability checklist for a successful run
+#
+# This file is declarative. Loading it does not run anything; the demo
+# is launched via the white-cell console (WS-505) by enqueuing turn 1
+# through the control-plane turn controller (WS-302).
+
+apiVersion: almighty.dynamo.works/v1
+kind: Scenario
+
+metadata:
+  name: nashville-cumberland-crossing
+  display_name: "Nashville Cumberland River crossing"
+  description: >
+    Six-turn scripted demo. Blue defends the west bank; red attempts a
+    forced crossing using combined arms, electronic warfare, and UAS
+    overflight. Capstone integration of WS-001 through WS-506 plus the
+    WS-401 between-turn harness driving WS-403 / WS-404 / WS-405 crews.
+  tenant_id:   "00000000-0000-4d00-8000-000000000001"   # demo tenant (fixed)
+  scenario_id: "00000000-0000-4101-8000-000000000001"   # Nashville crossing v1
+
+theater:
+  anchor:
+    lat_deg: 36.18
+    lon_deg: -86.78
+    alt_m:   165.0
+  named_areas_of_interest:
+    crossing_zone:    { lat_deg: 36.180, lon_deg: -86.780, alt_m: 165.0 }
+    west_bank_hq:     { lat_deg: 36.175, lon_deg: -86.785, alt_m: 165.0 }
+    east_bank_obj:    { lat_deg: 36.181, lon_deg: -86.770, alt_m: 165.0 }
+
+clock:
+  duration_turns: 6
+  turn_duration_s: 600        # 10 sim-minutes per turn
+  policy_window_split:
+    auto_approve_turns: [1, 2, 3]
+    manual_review_turns: [4, 5, 6]
+
+forces:
+  blue:
+    capability_profile: us-bct.json    # WS-107
+    crew_package:       almighty_blue_crew
+    echelon: BATTALION
+    initial_posture: ALERT
+    notional_entities:
+      - role: hq
+        type_subtype_ref: notional.ground.bct.hq.command-vehicle
+        position: west_bank_hq
+        force_affiliation: BLUE
+      - role: company_a
+        type_subtype_ref: notional.ground.bct.company
+        position: { lat_deg: 36.176, lon_deg: -86.786, alt_m: 165.0 }
+        force_affiliation: BLUE
+      - role: company_b
+        type_subtype_ref: notional.ground.bct.company
+        position: { lat_deg: 36.180, lon_deg: -86.787, alt_m: 165.0 }
+        force_affiliation: BLUE
+      - role: company_c
+        type_subtype_ref: notional.ground.bct.company
+        position: { lat_deg: 36.184, lon_deg: -86.786, alt_m: 165.0 }
+        force_affiliation: BLUE
+
+  red:
+    capability_profile: peer.json      # WS-107
+    crew_package:       almighty_red_crew
+    doctrine: peer                     # one of {peer, near-peer, hybrid}
+    echelon: BATTALION
+    initial_posture: MOUNTED
+    notional_entities:
+      - role: hq
+        type_subtype_ref: notional.peer.hq.command-vehicle
+        position: { lat_deg: 36.181, lon_deg: -86.768, alt_m: 165.0 }
+        force_affiliation: RED
+      - role: company_a
+        type_subtype_ref: notional.peer.company
+        position: { lat_deg: 36.179, lon_deg: -86.769, alt_m: 165.0 }
+        force_affiliation: RED
+      - role: company_b
+        type_subtype_ref: notional.peer.company
+        position: { lat_deg: 36.182, lon_deg: -86.770, alt_m: 165.0 }
+        force_affiliation: RED
+      - role: company_c
+        type_subtype_ref: notional.peer.company
+        position: { lat_deg: 36.185, lon_deg: -86.769, alt_m: 165.0 }
+        force_affiliation: RED
+
+# Override policies are authored by the white cell via the WS-505 console
+# pre-scenario. The seeds below are what pre-scenario.md instructs the
+# operator to enter; loading this file does not auto-create them.
+override_policy_seeds:
+  - scope: per-event
+    target_predicate: 'verb in ["destroy", "disable"]'
+    action: review
+    rationale: "Irreversible effects always pass through human ack."
+  - scope: per-turn
+    target_predicate: 'turn in [1, 2, 3]'
+    action: auto-approve
+    rationale: "Low-risk early scenario phase; auto-commit non-Effector verbs."
+  - scope: per-turn
+    target_predicate: 'turn in [4, 5, 6]'
+    action: review
+    rationale: "Late phase escalation; everything routes through white cell."
+
+# Where the AAR bundle lands when WS-506 export finishes. Tenant S3
+# bucket pattern from the WS-004 module: almighty-<tenant_id>-<env>.
+aar_export:
+  s3_bucket: almighty-00000000-0000-4d00-8000-000000000001-dev
+  s3_prefix: aar/00000000-0000-4101-8000-000000000001/
+  expected_artifacts:
+    - events.json
+    - czml-stream.czml
+    - override-decisions.json
+    - summary.pdf
+
+# Demo recording (out of repo).
+recording:
+  destination: s3://almighty-00000000-0000-4d00-8000-000000000001-dev/demos/recordings/
+  format: mp4
+  expected_duration_s: 1500   # ~25 wall-clock minutes for 6 sim turns + commentary
