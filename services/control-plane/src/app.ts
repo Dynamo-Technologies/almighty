@@ -6,6 +6,7 @@ import { createPool, type Pool } from "./db.js";
 import { registerTenantRoutes } from "./routes/tenants.js";
 import { registerScenarioRoutes } from "./routes/scenarios.js";
 import { registerTurnRoutes } from "./routes/turns.js";
+import { registerOverrideRoutes } from "./routes/overrides.js";
 
 export interface BuildAppOptions {
   env: Env;
@@ -34,6 +35,7 @@ export async function buildApp({ env, pool }: BuildAppOptions): Promise<{
   await registerTenantRoutes(app, db);
   await registerScenarioRoutes(app, db);
   await registerTurnRoutes(app, db);
+  await registerOverrideRoutes(app, db);
 
   app.addHook("onClose", async () => {
     if (!pool) await db.end();

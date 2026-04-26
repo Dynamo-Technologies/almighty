@@ -17,7 +17,7 @@
 
 import type { Pool } from "./db.js";
 import { runBetweenTurnAgents } from "./stubs/agent-runtime.js";
-import { applyOverrides } from "./stubs/override-gateway.js";
+import { applyOverrides } from "./override-gateway.js";
 import { publishTurnState } from "./stubs/websocket-fanout.js";
 
 export interface AdvanceTurnInput {
@@ -107,8 +107,8 @@ export async function advanceTurn(
       turn: closedTurn,
     });
 
-    // ---- Step 3: apply overrides (stubbed) ----
-    await applyOverrides({ tenantId, scenarioId, turn: closedTurn });
+    // ---- Step 3: apply overrides (WS-303) ----
+    await applyOverrides(pool, { tenantId, scenarioId, turn: closedTurn });
 
     // ---- Step 4: snapshot state ----
     // Pull entities + last N events for the closing turn. Snapshot row +
