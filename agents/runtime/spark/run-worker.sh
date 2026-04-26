@@ -67,8 +67,15 @@ docker run -d --name "$CONTAINER" \
   "$IMAGE" \
   -c "
     set -e
+    # almighty_agent_runtime/__init__.py re-exports celery_app at package
+    # load, so even though the shim itself never touches Celery, importing
+    # the package brings it in. memory:// broker means no actual broker
+    # connection — celery package alone (with its transitive kombu / vine /
+    # billiard) is enough.
+    # crewai is a real runtime dep (the agents instantiate crewai.Agent /
+    # crewai.LLM in the v3.6/3.7 LLM-driven path).
     python3 -m pip install --no-cache-dir --quiet \
-      fastapi 'uvicorn[standard]' httpx pyrapide pydantic
+      fastapi 'uvicorn[standard]' httpx pyrapide pydantic celery crewai
     cd /app/almighty
     exec python3 -m uvicorn almighty_agent_runtime.shim:app --host 0.0.0.0 --port $PORT --log-level info
   "
