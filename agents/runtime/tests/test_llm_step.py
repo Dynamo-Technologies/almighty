@@ -47,12 +47,24 @@ def _seed(dag: NamespacedDag, ctx: OfficerToolContext, *, verb: str) -> KernelEv
 
 
 def _mock_llm():
-    llm = MagicMock(name="llm")
-    llm.base_url = "http://stub:9000/v1"
-    llm.model = "stub-model"
-    llm.api_key = "EMPTY"
-    llm.temperature = 0.3
-    return llm
+    from almighty_agent_runtime.llm_clients import LLMConfig
+    return LLMConfig(
+        provider="vllm",
+        base_url="http://stub:9000/v1",
+        model="stub-model",
+        api_key="EMPTY",
+        temperature=0.3,
+    )
+
+
+def _bedrock_llm():
+    from almighty_agent_runtime.llm_clients import LLMConfig
+    return LLMConfig(
+        provider="bedrock",
+        model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        region="us-east-1",
+        temperature=0.3,
+    )
 
 
 def _mock_tool(name: str = "issue_order"):
@@ -200,6 +212,46 @@ def test_run_llm_role_step_handles_text_only_response():
     tool._run.assert_not_called()
     assert ctx.causal_predecessors == []
     assert results == []
+
+
+def test_run_llm_role_step_dispatches_to_bedrock():
+    """When llm.provider='bedrock', the helper calls _call_bedrock (which
+    uses boto3) instead of httpx.post."""
+    dag = NamespacedDag()
+    ctx = _make_ctx(dag)
+    _seed(dag, ctx, verb="detect")
+
+    tool = _mock_tool("issue_order")
+    tool._run = MagicMock(return_value={
+        "event_id": "x", "verb": "issue_order", "officer_type": "COMMANDER",
+        "validator": "skipped", "causal_predecessors": [],
+    })
+    agent = _mock_agent([tool])
+
+    with patch("almighty_agent_runtime.llm_step._call_bedrock") as mock_bedrock, \
+         patch("almighty_agent_runtime.llm_step.httpx.post") as mock_http:
+        mock_bedrock.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [{
+                        "id": "tu-1",
+                        "type": "function",
+                        "function": {"name": "issue_order", "arguments": '{"order_type": "MOVE"}'},
+                    }],
+                },
+                "finish_reason": "tool_calls",
+            }],
+        }
+        run_llm_role_step(
+            ctx=ctx, agent=agent, llm=_bedrock_llm(),
+            task_description="Decide.", expected_output="Tool calls.",
+        )
+
+    mock_bedrock.assert_called_once()
+    mock_http.assert_not_called()
+    tool._run.assert_called_once_with(order_type="MOVE")
 
 
 def test_run_llm_role_step_resets_predecessors_on_exception():

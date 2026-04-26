@@ -40,8 +40,10 @@ import httpx
 
 from .situation_report import build_situation_report, predecessor_event_ids
 
+from .llm_clients import LLMConfig
+
 if TYPE_CHECKING:
-    from crewai import LLM, Agent
+    from crewai import Agent
     from almighty_officer_tools.context import OfficerToolContext
 
 
@@ -53,7 +55,7 @@ def run_llm_role_step(
     *,
     ctx: "OfficerToolContext",
     agent: "Agent",
-    llm: "LLM",
+    llm: LLMConfig,
     task_description: str,
     expected_output: str,
 ) -> list[dict[str, Any]]:
@@ -86,28 +88,32 @@ def run_llm_role_step(
     try:
         # 3. Build OpenAI-format tool specs from the agent's bound tools.
         tool_specs = _build_tool_specs(agent.tools)
+        timeout = float(os.environ.get("ALMIGHTY_LLM_TIMEOUT_S", _DEFAULT_TIMEOUT_S))
+        messages = [
+            {
+                "role": "system",
+                "content": _system_prompt(agent),
+            },
+            {
+                "role": "user",
+                "content": (
+                    task_description
+                    + "\n\nSituation report (causal-order events from PyRapide):\n"
+                    + (report or "(no prior events)")
+                    + "\n\nExpected output: " + expected_output
+                ),
+            },
+        ]
 
-        # 4. Direct chat-completions call.
-        completion = _call_chat_completions(
-            llm=llm,
-            messages=[
-                {
-                    "role": "system",
-                    "content": _system_prompt(agent),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        task_description
-                        + "\n\nSituation report (causal-order events from PyRapide):\n"
-                        + (report or "(no prior events)")
-                        + "\n\nExpected output: " + expected_output
-                    ),
-                },
-            ],
-            tools=tool_specs,
-            timeout=float(os.environ.get("ALMIGHTY_LLM_TIMEOUT_S", _DEFAULT_TIMEOUT_S)),
-        )
+        # 4. Provider dispatch. Both branches return an OpenAI-shaped
+        #    completion so the rest of the pipeline doesn't care which
+        #    backend served it.
+        if llm.provider == "bedrock":
+            completion = _call_bedrock(llm=llm, messages=messages, tools=tool_specs)
+        else:
+            completion = _call_chat_completions(
+                llm=llm, messages=messages, tools=tool_specs, timeout=timeout,
+            )
 
         # 5. Run any tool calls the model emitted; collect their result dicts.
         return _run_tool_calls(agent.tools, completion)
@@ -150,26 +156,25 @@ def _build_tool_specs(tools: list) -> list[dict[str, Any]]:
 
 def _call_chat_completions(
     *,
-    llm: "LLM",
+    llm: LLMConfig,
     messages: list[dict[str, Any]],
     tools: list[dict[str, Any]],
     timeout: float,
 ) -> dict[str, Any]:
-    """Direct call to /v1/chat/completions on the LLM's base_url."""
-    base_url = (getattr(llm, "base_url", "") or "").rstrip("/")
+    """Direct call to /v1/chat/completions on the LLM's base_url (vllm path)."""
+    base_url = (llm.base_url or "").rstrip("/")
     if not base_url:
         raise RuntimeError("LLM has no base_url; nothing to call")
-    # llm.model can come back with the provider prefix stripped (e.g.
-    # "google/gemma-4-26B-A4B-it" rather than "hosted_vllm/google/...").
-    # Use it raw — vLLM expects the served-as name.
-    model = getattr(llm, "model", "")
-    api_key = getattr(llm, "api_key", "EMPTY") or "EMPTY"
+    # vLLM strips the provider prefix from the served name; use whatever
+    # the model field carries.
+    model = llm.model or ""
+    api_key = llm.api_key or "EMPTY"
     body = {
         "model": model,
         "messages": messages,
         "tools": tools,
         "tool_choice": "auto",
-        "temperature": float(getattr(llm, "temperature", 0.3) or 0.3),
+        "temperature": float(llm.temperature),
     }
     resp = httpx.post(
         f"{base_url}/chat/completions",
@@ -179,6 +184,99 @@ def _call_chat_completions(
     )
     resp.raise_for_status()
     return resp.json()
+
+
+def _call_bedrock(
+    *,
+    llm: LLMConfig,
+    messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Bedrock Converse API call. Translates OpenAI-shape messages/tools
+    into the Bedrock shape, invokes converse, then translates the
+    response back to the OpenAI shape so _run_tool_calls is unchanged.
+
+    boto3 picks up creds from the EC2 instance-metadata service; the
+    instance role needs bedrock:InvokeModel on the target model arn.
+    """
+    import boto3  # imported lazily so vllm-only deployments don't need boto3
+
+    if not llm.model_id:
+        raise RuntimeError("Bedrock LLM has no model_id")
+    client = boto3.client("bedrock-runtime", region_name=llm.region or "us-east-1")
+
+    # Translate messages: pull `system` out into the top-level system
+    # block; everything else into Bedrock's role/content shape.
+    system_blocks = []
+    bedrock_messages = []
+    for m in messages:
+        if m.get("role") == "system":
+            system_blocks.append({"text": m.get("content", "")})
+        else:
+            bedrock_messages.append({
+                "role": m["role"],
+                "content": [{"text": m.get("content", "") or ""}],
+            })
+
+    # Translate tool specs: OpenAI's {type:function, function:{name,description,parameters}}
+    # → Bedrock's {toolSpec:{name,description,inputSchema:{json:…}}}
+    bedrock_tools = []
+    for t in tools:
+        fn = t.get("function") or {}
+        bedrock_tools.append({
+            "toolSpec": {
+                "name": fn.get("name", "tool"),
+                "description": fn.get("description", ""),
+                "inputSchema": {"json": fn.get("parameters") or {"type": "object", "properties": {}}},
+            },
+        })
+
+    response = client.converse(
+        modelId=llm.model_id,
+        messages=bedrock_messages,
+        system=system_blocks,
+        toolConfig={
+            "tools": bedrock_tools,
+            "toolChoice": {"auto": {}},
+        },
+        inferenceConfig={
+            "temperature": float(llm.temperature),
+            "maxTokens": 1024,
+        },
+    )
+
+    # Translate Bedrock response → OpenAI completion shape so the rest
+    # of llm_step doesn't care which backend was used.
+    msg = ((response.get("output") or {}).get("message") or {})
+    contents = msg.get("content") or []
+    tool_calls = []
+    text_parts = []
+    for block in contents:
+        if "toolUse" in block:
+            tu = block["toolUse"]
+            tool_calls.append({
+                "id": tu.get("toolUseId", ""),
+                "type": "function",
+                "function": {
+                    "name": tu.get("name", ""),
+                    "arguments": json.dumps(tu.get("input") or {}),
+                },
+            })
+        elif "text" in block:
+            text_parts.append(block["text"])
+
+    finish = "tool_calls" if tool_calls else "stop"
+    return {
+        "choices": [{
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "\n".join(text_parts) if text_parts else None,
+                "tool_calls": tool_calls,
+            },
+            "finish_reason": finish,
+        }],
+    }
 
 
 def _run_tool_calls(tools: list, completion: dict[str, Any]) -> list[dict[str, Any]]:
