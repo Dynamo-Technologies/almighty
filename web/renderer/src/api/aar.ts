@@ -38,10 +38,12 @@ export interface AarEnvelope {
 
 const CONTROL_PLANE_BASE = (() => {
   if (typeof window === "undefined") return "http://localhost:4000";
-  // Default: Caddy proxies /api/* to the control-plane container. Override
-  // with VITE_CONTROL_PLANE_URL at build time when running locally without
-  // a Caddy reverse-proxy (e.g., point at http://localhost:4000).
-  return import.meta.env?.VITE_CONTROL_PLANE_URL ?? "/api";
+  // Default: Caddy proxies /api/* to the control-plane container. Need
+  // a fully-qualified URL (with origin) because fetchEvents uses
+  // `new URL(...)` which rejects bare relative paths.
+  const override = import.meta.env?.VITE_CONTROL_PLANE_URL;
+  if (override) return override;
+  return `${window.location.origin}/api`;
 })();
 
 export async function fetchEvents(
