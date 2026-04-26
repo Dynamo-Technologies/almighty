@@ -42,19 +42,28 @@ in the AAR. (The spec ships a fallback; see §9.)
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │   Presenter laptop (on Dynamo tailnet)                                       │
-│   Browser → http://aws-ec2.tailnet/excon (single page)                       │
+│   Browser → https://almighty-demo.dynamo.works/excon (single page)           │
 └────────┬─────────────────────────────────────────────────────────────────────┘
-         │ HTTPS / WSS over Tailscale
-         ▼
+         │ HTTPS over Tailscale (DNS resolves publicly via Route 53;             
+         │  only tailnet members can route to the 100.x.y.z target)              
+         ▼                                                                       
+┌──────────────────────────────────────────────────────────────────────────────┐
+│   AWS Route 53 — public hosted zone dynamo.works                              │
+│     A record  almighty-demo.dynamo.works  →  EC2 Tailscale IP (100.x.y.z)     │
+│   IAM (small policy on the dynamo.works zone, used by Caddy DNS-01 only)      │
+└────┬─────────────────────────────────────────────────────────────────────────┘
+     │
+     ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │   AWS EC2 (t3.medium, x86_64) in us-east-1, Tailscale-only ingress           │
 │   docker-compose:                                                            │
-│     • nginx (web build static + SPA reverse proxy)                           │
-│     • control-plane (Node.js, port 4000)                                     │
-│     • websocket-service (port 4001)                                          │
-│     • czml-adapter (port 4002)                                               │
-│     • tailscaled                                                             │
-│   No Redis. No Celery. No public 80/443.                                     │
+│     • caddy (real LE cert via DNS-01 against Route 53; reverse-proxies       │
+│              /api → control-plane, /ws → websocket, / → web build)           │
+│     • control-plane (Node.js, port 4000, internal)                           │
+│     • websocket-service (port 4001, internal)                                │
+│     • czml-adapter (port 4002, internal)                                     │
+│     • tailscaled (host network)                                              │
+│   No Redis. No Celery. No public 80/443. Caddy listens only on tailnet IP.   │
 └────┬──────────────────────────────────────────────────┬──────────────────────┘
      │ POST /run-turn over Tailscale                    │ pg over TLS
      ▼                                                  ▼
@@ -96,6 +105,9 @@ in the AAR. (The spec ships a fallback; see §9.)
 | EXCON console                            | EC2 (web build)      | Existing                    | Single visible action: "Advance turn 1" button                                                                 |
 | Supabase project                         | Cloud                | **New**                     | Postgres for the demo tenant. Schemas imported from `services/control-plane/src/db/`                            |
 | Tailscale on EC2                         | EC2                  | **New (cloud-init)**        | EC2 joins Dynamo tailnet via ephemeral auth key. Outbound to spark IPs. Ingress via tailnet only                |
+| Route 53 A record                         | AWS                  | **New**                     | `almighty-demo.dynamo.works` → EC2 Tailscale IP. Public DNS, private routing                                     |
+| IAM (Route 53 DNS-01)                     | AWS                  | **New**                     | Tiny scoped policy: `route53:ListHostedZones` + `route53:ChangeResourceRecordSets` + `route53:GetChange` on dynamo.works. Used by Caddy only                                                      |
+| Caddy (TLS termination + reverse proxy)   | EC2                  | **New (replaces nginx)**    | Caddy w/ `caddy-dns/route53` plugin. Auto Let's Encrypt via DNS-01 (no public 80/443 needed). Reverse-proxies internal services on the tailnet IP only                                  |
 | nvidia-smi side terminals                | Both Sparks          | **New (operator-run)**      | Two SSH terminals, `nvidia-smi dmon -s u`, projected next to browser. Pure visual stage element                  |
 
 ## 5. Data flow — one click to events on screen
@@ -234,10 +246,14 @@ What we **keep**:
 Coarse phases for the implementation plan to expand. Detail goes in the plan,
 not the spec.
 
-1. **AWS + Tailscale + Supabase plumbing.** EC2 up, joined to tailnet,
-   Supabase project created, schemas imported, control-plane reachable.
-   Validation: `psql` from EC2 to Supabase, `tailscale ping spark-763d`
-   from EC2.
+1. **AWS + Tailscale + Supabase + Route 53 plumbing.** EC2 up, joined
+   to tailnet, Supabase project created, schemas imported, Caddy
+   issuing a real Let's Encrypt cert for `almighty-demo.dynamo.works`
+   via Route 53 DNS-01, A record live, control-plane reachable from
+   the presenter laptop browser. Validation: `curl -v
+   https://almighty-demo.dynamo.works/healthz` from the laptop returns
+   200 with a green padlock; `tailscale ping spark-763d` from EC2;
+   `psql` from EC2 to Supabase.
 2. **Spark worker shim.** FastAPI in `agents/runtime/`, dockerized into
    the existing `crewai:stig-hardened-boto3` container via bind-mount and
    CMD override. Validation: `curl http://spark-763d:7000/healthz` from EC2.
@@ -271,6 +287,8 @@ deterministic red, narrate "the same pattern extends to red on Spark 2").
 | Gemma references an event_id that doesn't exist in `caused_by`                 | N/A       | We use auto-link (§6b), not Gemma-cited predecessors. Failure mode eliminated by design                                                   |
 | First-touch vLLM latency on cold model                                         | Medium    | Pre-warm. If still cold, the recovery line in §2 buys 30s of voice track to skip ahead                                                    |
 | Demo machine drops off Wi-Fi                                                    | Low       | Bring an Ethernet cable. Have a backup hotspot                                                                                            |
+| Caddy DNS-01 fails (IAM creds, zone id wrong, LE rate limit)                   | Medium    | Test the issuer once during build phase 1, well before showtime. LE staging environment for first attempt to avoid the 5-cert/week prod limit. Recovery: fall back to a self-signed cert; warn audience to click through |
+| Tailscale ACL rejects EC2 → Spark traffic                                      | Low       | Test `tailscale ping spark-763d` and `curl http://100.106.123.5:8001/v1/models` from EC2 immediately after cloud-init                       |
 
 ## 10. Voice track — the lines that earn the talk
 
@@ -281,7 +299,133 @@ Memorize these four. The rest is improvisation around them:
 3. **Causality line:** "Each event card cites its parents. Click any one — the full causal chain expands. That's PyRapide making the agent's reasoning auditable, not narrated, structural."
 4. **Closer:** "Cloud orchestration. Edge inference. Auditable causality. End to end."
 
-## 11. Out of scope (explicit)
+## 11. Operator prep — Tailscale + Route 53 + IAM
+
+These are the manual steps the operator (admin access required) does
+*before* the implementation work begins. They take ~10 minutes total.
+
+### 11a. Tailscale auth key for EC2
+
+In the Tailscale admin console (login.tailscale.com → Settings → Keys):
+
+- Click **Generate auth key**
+- **Reusable**: yes (so re-running cloud-init during testing doesn't burn a key per attempt)
+- **Ephemeral**: yes (the EC2 device auto-deletes from the tailnet when the instance stops — clean teardown)
+- **Pre-approved**: yes (skips manual approval in the admin UI)
+- **Tags**: `tag:demo-server` if your ACLs use tags; otherwise leave blank
+- **Expiry**: 24 hours
+- Copy the key (`tskey-auth-...`) — paste it into the EC2 cloud-init userdata in step 11d
+
+If you use tags: confirm in `Access Controls` that `tag:demo-server` is
+allowed to reach `100.106.123.5:8001` (spark-763d vLLM) and
+`100.112.216.53:8000` (spark-3fe3 vLLM). If you don't use tags, your
+default ACL likely already permits this. Quick test from EC2 once it's
+up: `curl http://100.106.123.5:8001/v1/models`.
+
+### 11b. Route 53 hosted zone check
+
+Confirm `dynamo.works` is a public hosted zone in the AWS account
+(`aws route53 list-hosted-zones | grep dynamo.works`). The A record
+will be created automatically by the Caddy DNS-01 issuer or via
+Terraform/aws-cli in step 1 of the build order. No manual A record
+needs to be pre-created — but the zone must exist.
+
+### 11c. IAM for Caddy DNS-01
+
+Create a small IAM user (or instance role attached to EC2) with this
+policy. Scope to the dynamo.works hosted zone ID, not `*`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:ListHostedZones",
+        "route53:GetChange"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "route53:ChangeResourceRecordSets",
+      "Resource": "arn:aws:route53:::hostedzone/<DYNAMO_WORKS_ZONE_ID>"
+    }
+  ]
+}
+```
+
+Capture the access key id + secret. If you used an instance role
+instead, no creds to capture — Caddy picks them up from EC2 metadata.
+
+### 11d. EC2 launch checklist
+
+When we provision the EC2 instance in step 1 of the build order, the
+cloud-init userdata will:
+
+```bash
+#!/bin/bash
+set -euxo pipefail
+
+# 1. Tailscale install + join
+curl -fsSL https://tailscale.com/install.sh | sh
+tailscale up \
+  --auth-key=<PASTE_TSKEY_FROM_STEP_11a> \
+  --hostname=almighty-demo \
+  --ssh \
+  --advertise-tags=tag:demo-server   # omit this line if you skipped tags
+
+# 2. Get the Tailscale IP and write it into a file the rest of the
+#    bootstrap reads
+tailscale ip -4 > /etc/almighty/tailscale-ip
+
+# 3. Docker + docker-compose-plugin
+apt-get update
+apt-get install -y docker.io docker-compose-plugin awscli
+
+# 4. Clone almighty and bring up the stack
+git clone https://github.com/Dynamo-Technologies/almighty /opt/almighty
+cd /opt/almighty
+# (compose file written in step 1 of build order; secrets come from
+#  AWS SSM Parameter Store or .env file we drop in)
+docker compose up -d
+
+# 5. Create / update the Route 53 A record pointing at our tailscale IP
+TS_IP=$(cat /etc/almighty/tailscale-ip)
+ZONE_ID=<DYNAMO_WORKS_ZONE_ID>
+aws route53 change-resource-record-sets --hosted-zone-id $ZONE_ID \
+  --change-batch "{\"Changes\":[{\"Action\":\"UPSERT\",\"ResourceRecordSet\":{\"Name\":\"almighty-demo.dynamo.works\",\"Type\":\"A\",\"TTL\":60,\"ResourceRecords\":[{\"Value\":\"$TS_IP\"}]}}]}"
+```
+
+After cloud-init finishes (~3-5 min), Caddy boots, requests its
+Let's Encrypt cert via DNS-01 (the IAM creds let it write the
+`_acme-challenge.almighty-demo.dynamo.works` TXT record), and serves
+the React app on `https://almighty-demo.dynamo.works`. Reachable only
+from devices on the tailnet because the A record points at a 100.x.y.z
+address with no public route.
+
+### 11e. Pre-flight test from presenter laptop
+
+Once cloud-init reports done:
+
+```bash
+# DNS resolves publicly
+dig +short almighty-demo.dynamo.works
+# Expect: a 100.x.y.z address
+
+# Without tailscale up, this hangs — that's the point
+nc -z -w 2 almighty-demo.dynamo.works 443; echo $?
+
+# With tailscale up, this returns 200
+curl -v https://almighty-demo.dynamo.works/healthz
+# Expect: green cert chain, 200 OK
+```
+
+If the laptop hangs *with* tailnet membership, the EC2 likely lost
+its tailscale connection — `tailscale status` from EC2 will show.
+
+## 12. Out of scope (explicit)
 
 - Multi-tenant isolation (one demo tenant)
 - Authentication beyond a hardcoded JWT (a single dev token suffices for
